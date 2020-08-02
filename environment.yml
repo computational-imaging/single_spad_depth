@@ -1,0 +1,19 @@
+name: spad-single
+
+channels:
+  - pytorch
+
+dependencies:
+  - python=3.6
+  - numpy
+  - matplotlib
+  - pytorch
+  - torchvision
+  - configargparse
+# - cudatoolkit=10.0   # Uncomment + replace with cuda version you're using.
+  - h5py
+  - scipy
+  - scikit-image
+  - pip
+  - pip:
+      - opencv-python
