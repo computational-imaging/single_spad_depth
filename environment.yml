@@ -14,6 +14,7 @@ dependencies:
   - h5py
   - scipy
   - scikit-image
+  - tqdm
   - pip
   - pip:
       - opencv-python
