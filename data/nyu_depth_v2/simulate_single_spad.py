@@ -16,6 +16,10 @@ parser.add('--output-dir', required=True)
 parser.add('--seed', type=int)
 
 
+def rgb2gray(img):
+    return 0.2989 * img[..., 0] + 0.5870 * img[..., 1] + 0.1140 * img[..., 2]
+
+
 class SingleSPADWithLaser:
     def __init__(self, n_bins, min_depth, max_depth, laser_fwhm_ps, seed=0):
         """
@@ -80,11 +84,6 @@ class SingleSPADWithLaser:
         counts = np.clip(counts, a_min=0., a_max=None)
         return counts
 
-
-def rgb2gray(img):
-    return 0.2989 * img[..., 0] + 0.5870 * img[..., 1] + 0.1140 * img[..., 2]
-
-
 if __name__ == "__main__":
     from tqdm import tqdm
     from pathlib import Path
@@ -92,10 +91,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
     spad = SingleSPADWithLaser(args.n_bins, args.min_depth,
                                args.max_depth, args.laser_fwhm_ps)
-
     # Load a sample depth map
-    from dataloader import get_dataloader
-    dataloader = get_dataloader(args.split)
+    from nyuv2_dataset import get_dataloader, crop_image_and_depth
+    dataloader = get_dataloader(args.split, transform=crop_image_and_depth)
     out = {}
     for sbr in args.sbr:
         print(f"Simulating with SBR = {sbr}")

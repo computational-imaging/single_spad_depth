@@ -9,15 +9,21 @@ from pdb import set_trace
 from tqdm import tqdm
 
 
-from .registry import REGISTRY
+from .experiment import Experiment
 
-parser = configargparse.ArgParser(default_config_files=['eval.cfg'])
-parser.add('-c', is_config_file=True)
-parser.add('--model', required=True, help="Model to evaluate.")
-parser.add('--split', required=True)
-parser.add('--spad-file')
+ex = Experiment()
+
+@ex.config("eval")
+def cfg():
+    parser = configargparse.ArgParser(default_config_files=['eval.cfg'])
+    parser.add('-c', is_config_file=True)
+    parser.add('--model', required=True, help="Model to evaluate.")
+    parser.add('--split', required=True)
+    config = parser.parse_args()
+    return vars(config)
 
 
+@ex.entity("eval")
 class NYUv2Evaluation:
     def __init__(self, model, split, transform, crop=NYUV2_CROP):
         self.model = model

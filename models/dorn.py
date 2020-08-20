@@ -8,33 +8,48 @@ import numpy as np
 import cv2
 from pathlib import Path
 from pdb import set_trace
+import configargparse
 import os
 # from models.data.data_utils.sid_utils import SIDTorch
 # from models.loss import get_depth_metrics
 
-from ..registry import register
+from ..experiment import Experiment
+
+ex = Experiment()
 
 def main():
-    bgr_state_dict_file = Path(os.path.dirname(__file__))/"dorn_backend"/"torch_params_nyuv2_BGR.pth.tar"
-    rgb_state_dict_file = Path(os.path.dirname(__file__))/"dorn_backend"/"dorn_nyuv2_rgb.pth"
-    # set_trace()
-    dorn_bgr = DORN(state_dict_file=bgr_state_dict_file)
-    dorn_rgb = DORN(state_dict_file=rgb_state_dict_file)
-    from ..data.nyu_depth_v2.dataloader import get_dataloader
+    # bgr_state_dict_file = Path(os.path.dirname(__file__))/"dorn_backend"/"torch_params_nyuv2_BGR.pth.tar"
+    # rgb_state_dict_file = Path(os.path.dirname(__file__))/"dorn_backend"/"dorn_nyuv2_rgb.pth"
+    # # set_trace()
+    # dorn_bgr = DORN(state_dict_file=bgr_state_dict_file)
+    # dorn_rgb = DORN(state_dict_file=rgb_state_dict_file)
+    # from ..data.nyu_depth_v2.dataloader import get_dataloader
 
-    dataloader = get_dataloader('test', transform=dorn_transform)
-    data = iter(dataloader).next()
+    # dataloader = get_dataloader('test', transform=dorn_transform)
+    # data = iter(dataloader).next()
+    # set_trace()
+    model = ex.entities['DORN']
+    config = ex.configs['DORN']()
+    mde = model(**config)
     set_trace()
 
-def dorn_transform(data):
-    # Resize RGB
-    # set_trace()
-    dorn_image = cv2.resize(data['image'].astype(np.float32), (353, 257), cv2.INTER_LINEAR)
-    # Subtract mean
-    mean = np.array([[[103.0626, 115.9029, 123.1516]]]).astype(np.float32)
-    dorn_image -= mean
-    data['dorn_image'] = dorn_image.transpose(2, 0, 1) # Make channels first
-    return data
+@ex.config("DORN")
+def cfg():
+    backend = Path(os.path.dirname(__file__))/"dorn_backend"
+    parser = configargparse.ArgParser(default_config_files=[backend/"dorn.cfg"])
+    parser.add('--in-channels', type=int, default=3)
+    parser.add('--in-height', type=int, default=257)
+    parser.add('--in-width', type=int, default=353)
+    parser.add('--sid-bins', type=int, default=68)
+    parser.add('--offset', type=float, default=0.)
+    parser.add('--min-depth', type=float, default=0.)
+    parser.add('--max-depth', type=float, default=10.)
+    parser.add('--alpha', type=float, default=0.6569154266167957)
+    parser.add('--beta', type=float, default=9.972175646365525)
+    parser.add('--frozen', type=bool, default=True)
+    parser.add('--state-dict-file', default=backend/"dorn_nyuv2_rgb.pth")
+    config = parser.parse_args()
+    return vars(config)
 
 class SIDTorch:
     """
@@ -94,6 +109,7 @@ class SIDTorch:
         return repr((self.sid_bins, self.alpha, self.beta, self.offset))
 
 
+@ex.entity("DORN")
 class DORN(nn.Module):
     """
     Deep Ordinal Regression Network
@@ -131,11 +147,21 @@ class DORN(nn.Module):
                 param.requires_grad = False
             self.eval()
 
+    @staticmethod
+    def preprocess(data):
+        # Resize RGB
+        # set_trace()
+        image = cv2.resize(data['image'].astype(np.float32), (353, 257), cv2.INTER_LINEAR)
+        # Subtract mean
+        mean = np.array([[[103.0626, 115.9029, 123.1516]]]).astype(np.float32)
+        image -= mean
+        data['image'] = dorn_image.transpose(2, 0, 1) # Make channels first
+        return data
+
     def to(self, device):
         super(DORN, self).to(device)
         self.sid_obj.to(device)
 
-    @register('DORN')
     def forward(self, image, resize=None):
         depth_pred = self.net(bgr)
         logprobs = self.to_logprobs(depth_pred)
@@ -147,17 +173,10 @@ class DORN(nn.Module):
             return self.ord_decode(logprobs_full, self.sid_obj)
         return self.ord_decode(logprobs, self.sid_obj)
 
-    def evaluate(self, bgr, bgr_orig, gt, mask):
+    def evaluate(self, data):
         # Output full-size depth map, so set resize_output=True
-        pred = self.predict(bgr, bgr_orig, resize_output=True)
-        # Crop to ROI according to https://cs.nyu.edu/~deigen/depth/
-        ROI = np.array([20, 460, 24, 616])
-        pred = pred[...,ROI[0]:ROI[1], ROI[2]:ROI[3]]
-        # Clip to proper range
-        pred = torch.clamp(pred, min=self.min_depth, max=self.max_depth)
-        # Mask and gt should be the size of the ROI.
-        metrics = self.get_metrics(pred, gt, mask)
-        return pred, metrics, torch.sum(mask).item()
+        pred = self.predict(data['image'], resize=(640, 480))
+        return pred
 
     @staticmethod
     def to_logprobs(x):

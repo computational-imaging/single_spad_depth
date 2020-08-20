@@ -1,5 +1,19 @@
 #!/usr/bin/env python3
 
+import configargparse
+from ..experiment import Experiment
+
+ex = Experiment('mde_transient')
+
+@ex.config('mde_transient')
+def cfg():
+    parser = configargparse.ArgParser(default_config_files=['dorn_transient.cfg'])
+    parser.add('--mde', choices=['DORN', 'DenseDepth', 'MiDaS'], required=True)
+    parser.add('--refl_est', choices=['grey', 'r', 'g', 'b'], required=True)
+    parser.add()
+
+
+@ex.entity('mde_transient')
 class MDETransient:
     def __init__(self, mde, preproc, refl_est, source_disc):
         self.mde = mde                   # MDE function
@@ -7,9 +21,12 @@ class MDETransient:
         self.preproc = preproc           # Preprocessing function
         self.source_disc = source_disc   # Discretization for reflectance-weighted depth hist
 
+    def __call__(self, data):
+        return self.predict(data['image'], data['transient'])
+
     def predict(self, image, transient):
         depth_init = self.mde(image)
-        reflectance_est = self.refl_est
+        reflectance_est = self.refl_est(image)
 
         # compute weighted depth hist
         source_hist = self.weighted_histogram(depth_init, reflectance_est)
