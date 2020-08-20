@@ -90,7 +90,6 @@ if __name__ == "__main__":
     from pathlib import Path
     from pdb import set_trace
     args = parser.parse_args()
-    # print(args)
     spad = SingleSPADWithLaser(args.n_bins, args.min_depth,
                                args.max_depth, args.laser_fwhm_ps)
 
@@ -109,9 +108,7 @@ if __name__ == "__main__":
                                 mask=np.ones_like(depth_truth),
                                 signal_count=args.signal_count,
                                 sbr=sbr)
-            # set_trace()
             all_counts[i, :] = counts
         out[str(sbr)] = all_counts
     output_path = Path(args.output_dir)/f"counts_{args.split}.npz"
-    # set_trace()
     np.savez(output_path, **out)

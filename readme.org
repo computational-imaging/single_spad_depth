@@ -1,0 +1,44 @@
+#+TITLE: README
+#+OPTIONS: toc:nil
+
+* Disambiguating Monocular Depth Estimation with a Single Transient
+#+TOC: headlines 1 local
+** Setup and Installation
+*** Anaconda
+We recommend using anaconda and creating an environment via the following
+command.
+#+BEGIN_SRC sh
+conda create -f environment.yml
+#+END_SRC
+This will create an environment called ~spad-single~ which can be activated via
+the command
+#+BEGIN_SRC sh
+conda activate spad-single
+#+END_SRC
+*** Pip
+Run the following command from the root directory. This will install all the
+required packages into the current environment.
+#+BEGIN_SRC sh
+python setup.py install
+#+END_SRC
+** Data
+*** NYU Depth v2
+Download the labeled dataset and the official train/test splits by running the
+following commands from the root directory
+#+BEGIN_SRC sh
+curl http://horatio.cs.nyu.edu/mit/silberman/nyu_depth_v2/nyu_depth_v2_labeled.mat  -o ./data/nyu_depth_v2/raw/nyu_depth_v2_labeled.mat
+curl http://horatio.cs.nyu.edu/mit/silberman/indoor_seg_sup/splits.mat -o ./data/nyu_depth_v2/raw/splits.mat
+#+END_SRC
+Then, run the split script to generate =.npz= files containing the dataset
+parts:
+#+BEGIN_SRC sh
+python data/nyu_depth_v2/split_nyuv2.py
+#+END_SRC
+*** Captured Data
+TODO
+
+** Running on NYU Depth v2
+#+BEGIN_SRC sh
+python -m eval_nyuv2.py
+#+END_SRC
+** Running on Captured Data

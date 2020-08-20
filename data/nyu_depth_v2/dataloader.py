@@ -47,18 +47,18 @@ def crop_image_and_depth(data, crop=NYUV2_CROP):
     return data
 
 
-def get_dataloader(split):
+def get_dataloader(split, transform=None):
     """
     split should be either "train" or "test"
     """
     assert split in ('train', 'test')
-    dataset = NYUDepthv2(SPLIT_FILES[split], transform=crop_image_and_depth,
+    dataset = NYUDepthv2(SPLIT_FILES[split], transform=transform,
                          split=split)
     return DataLoader(dataset, batch_size=1)
 
 
 if __name__ == "__main__":
-    test_dataloader = get_dataloader("test")
+    test_dataloader = get_dataloader("test", transform=crop_image_and_depth)
     for i, data in enumerate(test_dataloader):
         print(i)
         for k, v in data.items():
