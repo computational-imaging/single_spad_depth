@@ -13,9 +13,7 @@ import os
 # from models.data.data_utils.sid_utils import SIDTorch
 # from models.loss import get_depth_metrics
 
-from ..experiment import Experiment
-
-ex = Experiment()
+from ..experiment import ex
 
 def main():
     # bgr_state_dict_file = Path(os.path.dirname(__file__))/"dorn_backend"/"torch_params_nyuv2_BGR.pth.tar"
@@ -48,7 +46,7 @@ def cfg():
     parser.add('--beta', type=float, default=9.972175646365525)
     parser.add('--frozen', type=bool, default=True)
     parser.add('--state-dict-file', default=backend/"dorn_nyuv2_rgb.pth")
-    config = parser.parse_args()
+    config, _ = parser.parse_known_args()
     return vars(config)
 
 class SIDTorch:
@@ -109,6 +107,18 @@ class SIDTorch:
         return repr((self.sid_bins, self.alpha, self.beta, self.offset))
 
 
+@ex.transform('dorn_preprocess')
+def preprocess(data):
+    # Resize RGB
+    # set_trace()
+    image = cv2.resize(data['image'].astype(np.float32), (353, 257), cv2.INTER_LINEAR)
+    # Subtract mean
+    mean = np.array([[[103.0626, 115.9029, 123.1516]]]).astype(np.float32)
+    image = image - mean
+    data['dorn_image'] = dorn_image.transpose(2, 0, 1) # Make channels first
+    return data
+
+
 @ex.entity("DORN")
 class DORN(nn.Module):
     """
@@ -147,23 +157,13 @@ class DORN(nn.Module):
                 param.requires_grad = False
             self.eval()
 
-    @staticmethod
-    def preprocess(data):
-        # Resize RGB
-        # set_trace()
-        image = cv2.resize(data['image'].astype(np.float32), (353, 257), cv2.INTER_LINEAR)
-        # Subtract mean
-        mean = np.array([[[103.0626, 115.9029, 123.1516]]]).astype(np.float32)
-        image -= mean
-        data['image'] = dorn_image.transpose(2, 0, 1) # Make channels first
-        return data
 
     def to(self, device):
         super(DORN, self).to(device)
         self.sid_obj.to(device)
 
     def forward(self, image, resize=None):
-        depth_pred = self.net(bgr)
+        depth_pred = self.net(image)
         logprobs = self.to_logprobs(depth_pred)
         if resize is not None:
             # Note: align_corners=False gives same behavior as cv2.resize
@@ -172,11 +172,6 @@ class DORN(nn.Module):
             logprobs_full = self.to_logprobs(depth_pred_full)
             return self.ord_decode(logprobs_full, self.sid_obj)
         return self.ord_decode(logprobs, self.sid_obj)
-
-    def evaluate(self, data):
-        # Output full-size depth map, so set resize_output=True
-        pred = self.predict(data['image'], resize=(640, 480))
-        return pred
 
     @staticmethod
     def to_logprobs(x):

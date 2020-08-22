@@ -5,6 +5,8 @@ import numpy as np
 from torch.utils.data import DataLoader
 from pathlib import Path
 
+from ...experiment import ex
+
 SPLIT_FILES = {
     'train': Path(__file__).parent/"processed"/"nyuv2_train.npz",
     'test': Path(__file__).parent/"processed"/"nyuv2_test.npz"
@@ -17,6 +19,7 @@ TRANSIENT_FILES = {
 
 NYUV2_CROP = (20, 460, 24, 616)
 
+@ex.entity('NYUDepthv2')
 class NYUDepthv2(Dataset):
     def __init__(self, split, transform=None, **info):
         """
@@ -46,7 +49,7 @@ class NYUDepthv2(Dataset):
         else:
             return self.transform(data)
 
-
+@ex.entity('NYUDepthv2Transient')
 class NYUDepthv2Transient(Dataset):
     def __init__(self, split, sbr, transform=None, **info):
         super().__init__()
@@ -67,20 +70,11 @@ class NYUDepthv2Transient(Dataset):
         else:
             return self.transform(data)
 
-
+@ex.transform('crop_image_and_depth')
 def crop_image_and_depth(data, crop=NYUV2_CROP):
     for k in ['image', 'depth', 'rawDepth']:
         data[f'{k}_cropped'] = data[k][crop[0]:crop[1], crop[2]:crop[3]]
     return data
-
-
-def get_dataloader(split, transform=None):
-    """
-    split should be either "train" or "test"
-    """
-    assert split in ('train', 'test')
-    dataset = NYUDepthv2(split, transform=transform)
-    return DataLoader(dataset, batch_size=1)
 
 if __name__ == "__main__":
     test_dataloader = DataLoader(NYUDepthv2("test", transform=crop_image_and_depth),

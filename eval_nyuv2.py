@@ -2,37 +2,43 @@
 
 import numpy as np
 import torch
+from torchvision.transforms import Compose
+from torch.utils.data import DataLoader
 import configargparse
-from .data.nyu_depth_v2.dataloader import get_dataloader, NYUV2_CROP
-from .metrics import get_depth_metrics
 from pdb import set_trace
 from tqdm import tqdm
+from pathlib import Path
 
+from .metrics import get_depth_metrics
+from .models.dorn import DORN
+from .data.nyu_depth_v2.nyuv2_dataset import NYUDepthv2, NYUDepthv2Transient, NYUV2_CROP
 
-from .experiment import Experiment
+from .experiment import ex
 
-ex = Experiment()
-
-@ex.config("eval")
+@ex.config('eval')
 def cfg():
-    parser = configargparse.ArgParser(default_config_files=['eval.cfg'])
+    parser = configargparse.ArgParser(default_config_files=[Path(__file__).parent/"eval.yml"],
+                                      config_file_parser_class=configargparse.YAMLConfigFileParser)
     parser.add('-c', is_config_file=True)
-    parser.add('--model', required=True, help="Model to evaluate.")
-    parser.add('--split', required=True)
-    config = parser.parse_args()
+    parser.add('--mde', required=True, help="MDE to evaluate.")
+    parser.add('--augment', choices=['median', 'gt_hist', 'transient'], help='Optional augmenting')
+    parser.add('--sbr', type=float, help='sbr for transient')
+    parser.add('--split', choices=['train', 'test'], required=True)
+    parser.add('--transform', action='append')
+    config, _ = parser.parse_known_args()
+    set_trace()
     return vars(config)
 
 
-@ex.entity("eval")
+@ex.entity('NYUv2Evaluation')
 class NYUv2Evaluation:
-    def __init__(self, model, split, transform, crop=NYUV2_CROP):
+    def __init__(self, model, dataset, crop=NYUV2_CROP):
         self.model = model
-        self.split = split
-        self.transform = transform
+        self.dataset = dataset
         self.crop = crop
 
     def evaluate(self):
-        dataloader = get_dataloader(self.split, self.transform)
+        dataloader = DataLoader(self.dataset, batch_size=1)
         preds = []
         for i, data in tqdm(enumerate(dataloader), total=len(dataloader.dataset)):
             depth = self.model(data)
@@ -50,19 +56,43 @@ class NYUv2Evaluation:
         return metrics
 
 
-if __name__ == "__main__":
-    args = parser.parse_args()
-    if args.model == "DORN":
-        from .mde.dorn import DORN, dorn_transform
-        mde = DORN()
-        transform = dorn_transform
-    elif args.model == "DenseDepth":
+def get_mde(config):
+    if config['mde'] == 'DORN':
+        from .models.dorn import DORN
+        dorn_config = ex.config['DORN']
+        mde = DORN(**dorn_config)
+        model = lambda data: mde(data['dorn_image'], resize=(640, 480))
+        return model
+    elif config['mde'] == 'DenseDepth':
         raise NotImplementedError
-    elif args.model == "MiDaS":
+    elif args.model == 'MiDaS':
         raise NotImplementedError
     else:
         raise ValueError(f"Unknown model: {args.model}")
 
-    evaluator = NYUv2Evaluation(model, args.split, transform)
+
+def get_dataset():
+    if config['augment'] in [None, 'median', 'gt_hist']:
+        transforms.append(ex.transforms['crop_image_and_depth'])
+        dataset = NYUDepthv2(split=config['split'])
+    elif config['augment'] == 'transient':
+        transient_config = ex.configs['transient']
+        transforms.append(ex.transforms['crop_image_and_depth'])
+        dataset = NYUDepthv2Transient(split=config['split'], sbr=config['sbr'])
+        preproc = TransientPreprocessor(n_sid_bins=transient_config['n_sid_bins'],
+                                        n_ambient_bins=transient_config['ambient_bins'],
+                                        beta=transient_config['beta'],
+                                        n_std=transient_config['n_std'])
+    else:
+        raise ValueError(f"Unknown method: {config['augment']}")
+
+
+if __name__ == '__main__':
+    set_trace()
+    mde = get_mde()
+    dataset = get_dataset()
+    transform = Compose([ex.transforms[t] for t in ex.configs['eval']['transform']])
+    dataset.transform = transform
+    evaluator = NYUv2Evaluation(model, dataset)
     set_trace()
     metrics = evaluator.evaluate()

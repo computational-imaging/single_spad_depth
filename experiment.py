@@ -6,10 +6,11 @@ logger = logging.getLogger('experiment')
 logger.setLevel(logging.INFO)
 
 class Experiment:
-    def __init__(self, name, entities=None, configs=None):
+    def __init__(self, name, entities=None, configs=None, transforms=None):
         self.name = name
         self.entities = {} if entities is None else entities
         self.configs = {} if configs is None else configs
+        self.transforms = {} if transforms is None else transforms
 
     def entity(self, name):
         """Decorator for registering a class or function as a model
@@ -26,18 +27,27 @@ class Experiment:
             return cfg_fn
         return config_register
 
-    @staticmethod
-    def merge(cfg1, cfg2, key=""):
-        intersect = cfg1.keys() & cfg2.keys()
+    def transform(self, name):
+        def transform_register(transform):
+            self.transforms[name] = transform
+            return transform
+        return transform_register
+
+    def merge(self, d1, d2, other=""):
+        intersect = d1.keys() & d2.keys()
         if len(intersect) > 0:
-            logger.warning(f"Config item(s) {intersect} found multiple times. ({key})")
-        cfg1.update(cfg2)
-        return cfg1
+            logger.warning(f"When merging {self.name} and {other}, item(s) {intersect} found multiple times.")
+        d1.update(d2)
+        return d1
 
     def __add__(self, exp):
-        self.entities.update(exp.entities)
-        self.configs = Experiment.merge(self.configs, exp.configs, key=exp.name)
-        return self
+        self.entities = self.merge(self.entities, exp.entities, other=exp.name)
+        self.configs = self.merge(self.configs, exp.configs, other=exp.name)
+        self.transforms = self.merge(self.transforms, exp.transforms, other=exp.name)
+        return self.__class__(ntities, configs, transforms)
+
+# Instantiate once
+ex = Experiment('base')
 
 def test_experiment():
     ex = Experiment('test', configs={'entity1': {'a': 1, 'b': 2}})
