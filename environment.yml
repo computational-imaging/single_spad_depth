@@ -16,6 +16,8 @@ dependencies:
   - scipy
   - scikit-image
   - tqdm
+  - keras=2.2.4
   - pip
   - pip:
       - opencv-python
+      - tensorflow<1.14

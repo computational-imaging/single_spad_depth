@@ -12,6 +12,7 @@ from pathlib import Path
 from .metrics import get_depth_metrics
 # Models
 from .models.mde import MDE
+from .models.mde_median import MDEMedian
 from .models.mde_transient import MDETransient
 
 # Datasets
@@ -29,6 +30,7 @@ def cfg():
     parser.add('--sbr', type=float, help='sbr for transient')
     parser.add('--split', choices=['train', 'test'], required=True)
     parser.add('--transform', action='append')
+    parser.add('--output-dir', default=str(Path(__file__).parent/'results'))
     config, _ = parser.parse_known_args()
     # set_trace()
     return vars(config)
@@ -63,6 +65,11 @@ class NYUv2Evaluation:
                                               self.crop[2]:self.crop[3]]
             pred['metrics'] = self.compute_metrics(data, pred)
             preds.append(pred)
+            # set_trace()
+            # print(pred['metrics'])
+            # DEBUG
+            # if i == 1:
+                # break
         return preds
 
     def compute_metrics(self, data, pred):
@@ -86,3 +93,9 @@ if __name__ == '__main__':
     evaluator = ex.get_and_configure('NYUv2Evaluation')
     preds = evaluator.evaluate()
     summary = summarize([p['metrics'] for p in preds])
+    config = cfg()
+    model_name = config['model']
+    mde_name = evaluator.model.mde.__class__.__name__
+    output_dir = Path(config['output_dir'])/f'{model_name}'/f'{mde_name}'
+    output_dir.mkdir(parents=True, exist_ok=True)
+    np.save(output_dir/'summary', summary)

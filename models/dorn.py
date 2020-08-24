@@ -39,13 +39,75 @@ def cfg():
     config, _ = parser.parse_known_args()
     return vars(config)
 
+# class SIDTorch:
+    # """
+    # Reimplementation of spacing-increasing discretization but using pytorch
+    # functions.
+    # """
+    # def __init__(self, n_bins, alpha, beta, offset):
+    #     self.n_bins = n_bins
+    #     self.alpha = alpha
+    #     self.beta = beta
+    #     self.offset = offset
+
+    #     # Derived quantities
+    #     self.alpha_star = self.alpha + offset
+    #     self.beta_star = self.beta + offset
+    #     bin_edges = np.array(range(n_bins + 1)).astype(np.float32)
+    #     self.bin_edges = torch.tensor(np.exp(np.log(self.alpha_star) +
+    #                                          bin_edges / self.n_bins * np.log(self.beta_star / self.alpha_star)))
+    #     self.bin_values = (self.bin_edges[:-1] + self.bin_edges[1:]) / 2 - self.offset
+    #     self.bin_values = torch.cat([self.bin_values,
+    #                                      torch.tensor([self.beta, self.alpha])], 0)
+    #     # Do the above so that:
+    #     # self.bin_values[-1] = self.alpha < self.bin_values[0]
+    #     # and
+    #     # self.bin_values[n_bins] = self.beta > self.bin_values[n_bins-1]
+
+    # def to(self, device):
+    #     self.bin_values = self.bin_values.to(device)
+    #     self.bin_edges = self.bin_edges.to(device)
+    #     # print(self.bin_values.device)
+
+    # def get_sid_index_from_value(self, arr):
+    #     """
+    #     Given an array of values in the range [alpha, beta], return the
+    #     indices of the bins they correspond to
+    #     :param arr: The array to turn into indices.
+    #     :return: The array of indices.
+    #     """
+    #     # print(arr + self.offset)
+    #     temp = (self.n_bins * (torch.log(arr + self.offset) - np.log(self.alpha_star)) /
+    #                             (np.log(self.beta_star) - np.log(self.alpha_star)))
+    #     sid_index = torch.floor(temp).long()
+    #     sid_index = torch.clamp(sid_index, min=0, max=self.n_bins-1)
+    #     # An index of -1 indicates alpha, while self.n_bins indicates beta
+    #     return sid_index
+
+    # def get_value_from_sid_index(self, index):
+    #     """
+    #     Given an array of indices in the range {0,...,n_bins-1},
+    #     return the representative value of the selected bin.
+    #     :param sid_index: The array of indices.
+    #     :return: The array of values correspondding to those indices
+    #     """
+    #     return torch.take(self.bin_values, index)
+
+    # def __repr__(self):
+    #     return repr((self.sid_bins, self.alpha, self.b
+#                     eta, self.offset))
+
 class SIDTorch:
     """
-    Reimplementation of spacing-increasing discretization but using pytorch
-    functions.
+    Implements Spacing-Increasing Discretization as described in the DORN paper.
+
+    Bonus: Includes support for when the index is -1 (in which case the value should be alpha)
+    and when it is sid_bins (in which case the value should be beta).
+
+    Works in pytorch.
     """
-    def __init__(self, n_bins, alpha, beta, offset):
-        self.n_bins = n_bins
+    def __init__(self, sid_bins, alpha, beta, offset):
+        self.sid_bins = sid_bins
         self.alpha = alpha
         self.beta = beta
         self.offset = offset
@@ -53,21 +115,21 @@ class SIDTorch:
         # Derived quantities
         self.alpha_star = self.alpha + offset
         self.beta_star = self.beta + offset
-        bin_edges = np.array(range(n_bins + 1)).astype(np.float32)
-        self.bin_edges = torch.tensor(np.exp(np.log(self.alpha_star) +
-                                             bin_edges / self.n_bins * np.log(self.beta_star / self.alpha_star)))
-        self.bin_values = (self.bin_edges[:-1] + self.bin_edges[1:]) / 2 - self.offset
-        self.bin_values = torch.cat([self.bin_values,
+        bin_edges = np.array(range(sid_bins + 1)).astype(np.float32)
+        self.sid_bin_edges = torch.tensor(np.exp(np.log(self.alpha_star) +
+                                             bin_edges / self.sid_bins * np.log(self.beta_star / self.alpha_star)))
+        self.sid_bin_values = (self.sid_bin_edges[:-1] + self.sid_bin_edges[1:]) / 2 - self.offset
+        self.sid_bin_values = torch.cat([self.sid_bin_values,
                                          torch.tensor([self.beta, self.alpha])], 0)
         # Do the above so that:
-        # self.bin_values[-1] = self.alpha < self.bin_values[0]
+        # self.sid_bin_values[-1] = self.alpha < self.sid_bin_values[0]
         # and
-        # self.bin_values[n_bins] = self.beta > self.bin_values[n_bins-1]
+        # self.sid_bin_values[sid_bins] = self.beta > self.sid_bin_values[sid_bins-1]
 
     def to(self, device):
-        self.bin_values = self.bin_values.to(device)
-        self.bin_edges = self.bin_edges.to(device)
-        # print(self.bin_values.device)
+        self.sid_bin_values = self.sid_bin_values.to(device)
+        self.sid_bin_edges = self.sid_bin_edges.to(device)
+        # print(self.sid_bin_values.device)
 
     def get_sid_index_from_value(self, arr):
         """
@@ -77,25 +139,24 @@ class SIDTorch:
         :return: The array of indices.
         """
         # print(arr + self.offset)
-        temp = (self.n_bins * (torch.log(arr + self.offset) - np.log(self.alpha_star)) /
+        temp = (self.sid_bins * (torch.log(arr + self.offset) - np.log(self.alpha_star)) /
                                 (np.log(self.beta_star) - np.log(self.alpha_star)))
         sid_index = torch.floor(temp).long()
-        sid_index = torch.clamp(sid_index, min=0, max=self.n_bins-1)
-        # An index of -1 indicates alpha, while self.n_bins indicates beta
+        sid_index = torch.clamp(sid_index, min=-1, max=self.sid_bins)
+        # An index of -1 indicates alpha, while self.sid_bins indicates beta
         return sid_index
 
-    def get_value_from_sid_index(self, index):
+    def get_value_from_sid_index(self, sid_index):
         """
-        Given an array of indices in the range {0,...,n_bins-1},
+        Given an array of indices in the range {-1, 0,...,sid_bins},
         return the representative value of the selected bin.
         :param sid_index: The array of indices.
         :return: The array of values correspondding to those indices
         """
-        return torch.take(self.bin_values, index)
+        return torch.take(self.sid_bin_values, sid_index)
 
     def __repr__(self):
         return repr((self.sid_bins, self.alpha, self.beta, self.offset))
-
 
 @ex.transform('dorn_preprocess')
 def preprocess(data):
@@ -104,7 +165,7 @@ def preprocess(data):
     # set_trace()
     image = cv2.resize(data['image'].astype(np.float32), (353, 257), cv2.INTER_LINEAR)
     # Subtract mean
-    mean = np.array([[[103.0626, 115.9029, 123.1516]]]).astype(np.float32)
+    mean = np.array([[[123.1516, 115.9029, 103.0626]]]).astype(np.float32)
     image = image - mean
     data['dorn_image'] = image
     # data['dorn_image'] = image.transpose(2, 0, 1) # Make channels first
@@ -170,7 +231,8 @@ class DORN(nn.Module):
                                             size=(self.full_height, self.full_width),
                                             mode="bilinear", align_corners=False)
             logprobs_full = self.to_logprobs(depth_pred_full)
-            return self.ord_decode(logprobs_full, self.sid_obj)
+            depth_pred_full = self.ord_decode(logprobs_full, self.sid_obj)
+            return torch.clamp(depth_pred_full, min=self.min_depth, max=self.max_depth)
         return self.ord_decode(logprobs, self.sid_obj)
 
     @staticmethod

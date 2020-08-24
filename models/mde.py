@@ -13,7 +13,8 @@ from ..experiment import ex
 
 @ex.config('MDE')
 def cfg():
-    parser = configargparse.ArgParser(default_config_files=[Path(__file__).parent/'mde_model.cfg'])
+    parser = configargparse.ArgParser(default_config_files=[str(Path(__file__).parent/'mde_model.cfg')])
+    parser.add('--mde-config', is_config_file=True)
     parser.add('--mde', choices = ['DORN', 'DenseDepth', 'MiDaS'], required=True)
     parser.add('--img-key', required=True, default='image', help='Key in data corresponding to image')
     parser.add('--in-type', choices=['torch', 'numpy'], required=True, default='torch')
@@ -51,7 +52,7 @@ class MDE:
     def __call__(self, data):
         """
         Wraps the mde so that it takes torch input and produces numpy output
-        image_tensor is a torch tensor in NCHW format from the torch dataloader
+        image_tensor is a torch float tensor in [0, 1] in NCHW format from the torch dataloader
         out is a numpy array in NHWC format
         """
         img = data[self.key]
