@@ -1,5 +1,6 @@
+dataset: normal
 split: test
-mde: DORN
+model: MDE
 transform:
   - crop_image_and_depth
   - dorn_preprocess

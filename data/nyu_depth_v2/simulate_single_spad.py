@@ -2,8 +2,9 @@
 import numpy as np
 from scipy.signal import fftconvolve
 import configargparse
+from pathlib import Path
 
-parser = configargparse.ArgParser(default_config_files=['spad.cfg'])
+parser = configargparse.ArgParser(default_config_files=[str(Path(__file__).parent/'spad.cfg')])
 parser.add('split', type=str)
 parser.add('-c', is_config_file=True)
 parser.add('--n-bins', type=int, required=True)
@@ -17,6 +18,7 @@ parser.add('--seed', type=int)
 
 
 def rgb2gray(img):
+    """Requires (N)HWC tensor"""
     return 0.2989 * img[..., 0] + 0.5870 * img[..., 1] + 0.1140 * img[..., 2]
 
 

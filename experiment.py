@@ -6,19 +6,26 @@ logger = logging.getLogger('experiment')
 logger.setLevel(logging.INFO)
 
 class Experiment:
-    def __init__(self, name, entities=None, configs=None, transforms=None):
+    def __init__(self, name, entities=None, configs=None, setups=None, transforms=None):
         self.name = name
         self.entities = {} if entities is None else entities
         self.configs = {} if configs is None else configs
         self.transforms = {} if transforms is None else transforms
+        self.setups = {} if setups is None else setups
 
-    def entity(self, name):
-        """Decorator for registering a class or function as a model
+    def entity(self, _obj=None, *, name=None):
+        """Decorator for registering a class or function
+        Can optionally be called with a name argument, otherwise the
+        object/function name is used.
         """
-        def entity_register(obj):
-            self.entities[name] = obj
-            return obj
-        return entity_register
+        if _obj is None:  # name argument
+            def entity_register(_obj):
+                self.entities[name] = _obj
+                return _obj
+            return entity_register
+        else:             # No argments
+            self.entities[_obj.__name__] = _obj
+            return _obj
 
     def config(self, name):
         def config_register(cfg_fn):
@@ -27,11 +34,22 @@ class Experiment:
             return cfg_fn
         return config_register
 
+    def setup(self, name):
+        def setup_register(setup_fn):
+            self.setups[name] = setup_fn
+            return setup_fn
+        return setup_register
+
     def transform(self, name):
         def transform_register(transform):
             self.transforms[name] = transform
             return transform
         return transform_register
+
+    def get_and_configure(self, name):
+        setup_fn = self.setups[name]
+        config = self.configs[name]
+        return setup_fn(config)
 
     def merge(self, d1, d2, other=""):
         intersect = d1.keys() & d2.keys()
@@ -44,7 +62,7 @@ class Experiment:
         self.entities = self.merge(self.entities, exp.entities, other=exp.name)
         self.configs = self.merge(self.configs, exp.configs, other=exp.name)
         self.transforms = self.merge(self.transforms, exp.transforms, other=exp.name)
-        return self.__class__(ntities, configs, transforms)
+        return self
 
 # Instantiate once
 ex = Experiment('base')
@@ -60,9 +78,24 @@ def test_experiment():
     ex += ex2
     print(ex.configs)
 
-if __name__ == "__main__":
-    test_experiment()
+def test_entity_registration():
+    ex = Experiment('test')
+    @ex.entity
+    class MyClass:
+        def __init__(self):
+            self.greeting = "hello"
 
+    @ex.entity(name="custom_name")
+    class MyClass2:
+        def __init__(self):
+            self.greeting = "sup"
+
+    print(ex.entities)
+
+if __name__ == "__main__":
+    from pdb import set_trace
+    test_experiment()
+    test_entity_registration()
 
 
 

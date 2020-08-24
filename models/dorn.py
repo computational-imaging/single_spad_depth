@@ -10,34 +10,24 @@ from pathlib import Path
 from pdb import set_trace
 import configargparse
 import os
-# from models.data.data_utils.sid_utils import SIDTorch
-# from models.loss import get_depth_metrics
 
 from ..experiment import ex
 
 def main():
-    # bgr_state_dict_file = Path(os.path.dirname(__file__))/"dorn_backend"/"torch_params_nyuv2_BGR.pth.tar"
-    # rgb_state_dict_file = Path(os.path.dirname(__file__))/"dorn_backend"/"dorn_nyuv2_rgb.pth"
-    # # set_trace()
-    # dorn_bgr = DORN(state_dict_file=bgr_state_dict_file)
-    # dorn_rgb = DORN(state_dict_file=rgb_state_dict_file)
-    # from ..data.nyu_depth_v2.dataloader import get_dataloader
-
-    # dataloader = get_dataloader('test', transform=dorn_transform)
-    # data = iter(dataloader).next()
-    # set_trace()
     model = ex.entities['DORN']
-    config = ex.configs['DORN']()
+    config = ex.configs['DORN']
     mde = model(**config)
     set_trace()
 
 @ex.config("DORN")
 def cfg():
-    backend = Path(os.path.dirname(__file__))/"dorn_backend"
-    parser = configargparse.ArgParser(default_config_files=[backend/"dorn.cfg"])
+    backend = Path(__file__).parent/"dorn_backend"
+    parser = configargparse.ArgParser(default_config_files=[str(backend/'dorn.cfg')])
     parser.add('--in-channels', type=int, default=3)
     parser.add('--in-height', type=int, default=257)
     parser.add('--in-width', type=int, default=353)
+    parser.add('--full-height', type=int, default=480)
+    parser.add('--full-width', type=int, default=640)
     parser.add('--sid-bins', type=int, default=68)
     parser.add('--offset', type=float, default=0.)
     parser.add('--min-depth', type=float, default=0.)
@@ -101,7 +91,7 @@ class SIDTorch:
         :param sid_index: The array of indices.
         :return: The array of values correspondding to those indices
         """
-        return torch.take(self.bin_values, sid_index)
+        return torch.take(self.bin_values, index)
 
     def __repr__(self):
         return repr((self.sid_bins, self.alpha, self.beta, self.offset))
@@ -109,17 +99,22 @@ class SIDTorch:
 
 @ex.transform('dorn_preprocess')
 def preprocess(data):
+    """Convert numpy HWC images"""
     # Resize RGB
     # set_trace()
     image = cv2.resize(data['image'].astype(np.float32), (353, 257), cv2.INTER_LINEAR)
     # Subtract mean
     mean = np.array([[[103.0626, 115.9029, 123.1516]]]).astype(np.float32)
     image = image - mean
-    data['dorn_image'] = dorn_image.transpose(2, 0, 1) # Make channels first
+    data['dorn_image'] = image
+    # data['dorn_image'] = image.transpose(2, 0, 1) # Make channels first
     return data
 
+@ex.setup('DORN')
+def setup(config):
+    return DORN(**config)
 
-@ex.entity("DORN")
+@ex.entity
 class DORN(nn.Module):
     """
     Deep Ordinal Regression Network
@@ -129,6 +124,7 @@ class DORN(nn.Module):
     Meant to be run as a part of a larger network.
     """
     def __init__(self, in_channels=3, in_height=257, in_width=353,
+                 full_height=480, full_width=640,
                  sid_bins=68, offset=0.,
                  min_depth=0., max_depth=10.,
                  alpha=0.6569154266167957, beta=9.972175646365525,
@@ -139,6 +135,8 @@ class DORN(nn.Module):
 
         self.in_heignt = in_height
         self.in_width = in_width
+        self.full_height = full_height
+        self.full_width = full_width
         self.in_channels = in_channels
         self.offset = offset
         self.sid_bins = sid_bins
@@ -152,6 +150,7 @@ class DORN(nn.Module):
         if state_dict_file is not None:
             self.load_state_dict(torch.load(state_dict_file))
             print("Loaded state dict file from {}".format(state_dict_file))
+        self.frozen = frozen
         if frozen:
             for param in self.parameters():
                 param.requires_grad = False
@@ -162,12 +161,13 @@ class DORN(nn.Module):
         super(DORN, self).to(device)
         self.sid_obj.to(device)
 
-    def forward(self, image, resize=None):
+    def forward(self, image):
         depth_pred = self.net(image)
         logprobs = self.to_logprobs(depth_pred)
-        if resize is not None:
+        if self.frozen:
             # Note: align_corners=False gives same behavior as cv2.resize
-            depth_pred_full = F.interpolate(depth_pred, size=resize,
+            depth_pred_full = F.interpolate(depth_pred,
+                                            size=(self.full_height, self.full_width),
                                             mode="bilinear", align_corners=False)
             logprobs_full = self.to_logprobs(depth_pred_full)
             return self.ord_decode(logprobs_full, self.sid_obj)

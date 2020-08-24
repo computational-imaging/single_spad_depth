@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
-from torch.utils.data import Dataset
+import torch
 import numpy as np
+from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
+import torchvision.transforms.functional as F
 from pathlib import Path
 
 from ...experiment import ex
@@ -19,7 +21,7 @@ TRANSIENT_FILES = {
 
 NYUV2_CROP = (20, 460, 24, 616)
 
-@ex.entity('NYUDepthv2')
+@ex.entity
 class NYUDepthv2(Dataset):
     def __init__(self, split, transform=None, **info):
         """
@@ -49,11 +51,11 @@ class NYUDepthv2(Dataset):
         else:
             return self.transform(data)
 
-@ex.entity('NYUDepthv2Transient')
+@ex.entity
 class NYUDepthv2Transient(Dataset):
     def __init__(self, split, sbr, transform=None, **info):
         super().__init__()
-        self.nyuv2 = NYUDepthv2(split, transform=transform, **info)
+        self.nyuv2 = NYUDepthv2(split, transform=None, **info)
         self.info = info
         npz = np.load(TRANSIENT_FILES[split], allow_pickle=True)
         self.transient = npz[str(sbr)]
@@ -72,21 +74,36 @@ class NYUDepthv2Transient(Dataset):
 
 @ex.transform('crop_image_and_depth')
 def crop_image_and_depth(data, crop=NYUV2_CROP):
+    """Drop a HW or HWC image"""
     for k in ['image', 'depth', 'rawDepth']:
         data[f'{k}_cropped'] = data[k][crop[0]:crop[1], crop[2]:crop[3]]
     return data
 
+@ex.transform('to_tensor')
+def to_tensor(data):
+    """Convert NHWC numpy data entries to NCHW torch tensors.
+    RGB image (i.e. type np.uint8) get converted to torch float32 tensors
+    in [0, 1] as well.
+    """
+    for k, v in data.items():
+        if len(v.shape) >= 3:
+            data[k] = F.to_tensor(v)
+    return data
+
+
 if __name__ == "__main__":
-    test_dataloader = DataLoader(NYUDepthv2("test", transform=crop_image_and_depth),
+    from torchvision.transforms import Compose
+    transform = Compose([crop_image_and_depth, to_tensor])
+    test_dataloader = DataLoader(NYUDepthv2("test", transform=transform),
                                  batch_size=1)
     print("No transient")
     data = iter(test_dataloader).next()
     for k, v in data.items():
-        print(k, v.shape)
-    test_dataloader = DataLoader(NYUDepthv2Transient("test", sbr=5., transform=crop_image_and_depth),
+        print(k, v.shape, v.dtype)
+    test_dataloader = DataLoader(NYUDepthv2Transient("test", sbr=5., transform=transform),
                                  batch_size=1)
     print("With transient")
     data = iter(test_dataloader).next()
     for k, v in data.items():
-        print(k, v.shape)
+        print(k, v.shape, v.dtype)
     print("done.")

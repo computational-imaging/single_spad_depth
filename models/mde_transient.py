@@ -1,36 +1,63 @@
 #!/usr/bin/env python3
 
 import configargparse
+from pathlib import Path
 from ..discretize import SI, rescale_hist
+from ..data.nyu_depth_v2.simulate_single_spad import rgb2gray
 from ..experiment import ex
 
-@ex.config('transient')
+@ex.config('MDETransient')
 def cfg():
-    parser = configargparse.ArgParser(default_config_files=['dorn_transient.cfg'])
+    parser = configargparse.ArgParser(default_config_files=[str(Path(__file__).parent/'mde_transient.cfg')])
     parser.add('--mde', choices=['DORN', 'DenseDepth', 'MiDaS'], required=True)
-    parser.add('--refl-est', choices=['grey', 'r'], required=True)
+    parser.add('--refl-est', choices=['grey', 'red'], required=True)
     parser.add('--n-sid-bins', type=int, default=68)
     parser.add('--ambient-bins', type=int, default=100)
-    parser.add('--beta', type=float, default=5.)
+    parser.add('--edge-coeff', type=float, default=5.)
     parser.add('--n-std', type=int, default=1)
+    parser.add('--alpha', type=float)
+    parser.add('--beta', type=float)
+    parser.add('--offset', type=float)
     args, _ = parser.parse_known_args()
     return vars(args)
 
+@ex.setup('MDETransient')
+def setup(config):
+    mde = ex.get_and_configure(config['mde'])
+    preproc = TransientPreprocessor(config['n_sid_bins'],
+                                    config['n_ambient_bins'],
+                                    config['beta'],
+                                    config['n_std'])
+    if config['refl_est'] == 'grey':
+        refl_est = refl_est_grey
+    elif config['refl_est'] == 'red':
+        refl_est = refl_est_red
+    source_disc = SI(config['n_sid_bins'],
+                     config['alpha'],
+                     config['beta'],
+                     config['offset'])
+    return MDETransient(mde=mde,
+                        preproc=preproc,
+                        refl_est=refl_est,
+                        source_disc=source_disc)
 
-@ex.entity('MDETransient')
+@ex.entity
 class MDETransient:
     def __init__(self, mde, preproc, refl_est, source_disc):
-        self.mde = mde                   # MDE function
-        self.refl_est = refl_est         # Reflectance estimation function
-        self.preproc = preproc           # Preprocessing function
+        self.mde = mde                   # MDE function, torch (channels first) -> np (single channel)
+        self.refl_est = refl_est         # Reflectance estimator, torch -> np
+        self.preproc = preproc           # Preprocessing function, np -> np
         self.source_disc = source_disc   # Discretization for reflectance-weighted depth hist
 
     def __call__(self, data):
-        return self.predict(data['image'], data['transient'])
+        """
+        Inputs are torch tensors
+        """
+        return self.predict(data['image'], data['transient'].numpy())
 
-    def predict(self, image, transient):
-        depth_init = self.mde(image)
-        reflectance_est = self.refl_est(image)
+    def predict(self, image_tensor, transient):
+        depth_init = self.mde(image_tensor)
+        reflectance_est = self.refl_est(image_tnsor)
 
         # compute weighted depth hist
         source_hist = self.weighted_histogram(depth_init, reflectance_est)
@@ -85,12 +112,12 @@ class MDETransient:
         return depth_pred
 
 
-@ex.entity('TransientPreprocessor')
+@ex.entity
 class TransientPreprocessor:
-    def __init__(self, n_sid_bins, n_ambient_bins, beta, n_std):
+    def __init__(self, n_sid_bins, n_ambient_bins, edge_coeff, n_std):
         self.n_sid_bins = n_sid_bins                # SID bins to discretize transient to
         self.n_ambient_bins = n_ambient_bins        # Number of bins to use to estimate ambient
-        self.beta = beta                            # Gradient threshold for edge detection
+        self.edge_coeff                             # Coefficient that controls edge detection
         self.n_std = n_std                          # Number of std devs above ambient to cut
 
     def preprocess_transient(self, raw_counts, counts_disc):
@@ -100,7 +127,7 @@ class TransientPreprocessor:
         ambient = self.estimate_ambient(raw_counts)
         processed_counts = self.remove_ambient(raw_counts,
                                       ambient=ambient,
-                                      grad_th=self.beta*np.sqrt(2*ambient))
+                                      grad_th=self.edge_coeff*np.sqrt(2*ambient))
         processed_counts = self.correct_falloff(processed_counts, counts_disc)
 
         # Scale SID object to maximize bin utilization
@@ -140,3 +167,23 @@ class TransientPreprocessor:
 
     def correct_falloff(self, counts, counts_disc):
         return counts * counts_disc.bin_values ** 2
+
+@ex.entity
+def refl_est_grey(nchw_tensor):
+    """
+    tensor should be a NCHW torch tensor
+    """
+    assert len(nchw_tensor.shape) == 4
+    nhwc = nchw_tensor.numpy().transpose(0, 2, 3, 1)
+    refl_est = rgb2gray(nhwc)
+    return refl_est
+
+@ex.entity
+def refl_est_red(nchw_tensor):
+    """
+    tensor should be a NCHW torch tensor
+    """
+    assert len(nchw_tensor.shape) == 4
+    nhwc = nchw_tensor.numpy().transpose(0, 2, 3, 1)
+    refl_est = nhwc[..., 0]
+    return refl_est
