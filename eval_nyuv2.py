@@ -22,9 +22,9 @@ from .experiment import ex
 
 @ex.config('NYUv2Evaluation')
 def cfg():
-    parser = configargparse.ArgParser(default_config_files=[str(Path(__file__).parent/'eval.yml')],
+    parser = configargparse.ArgParser(default_config_files=[str(Path(__file__).parent/'eval_mde.yml')],
                                       config_file_parser_class=configargparse.YAMLConfigFileParser)
-    parser.add('-c', is_config_file=True)
+    parser.add('--eval-config', is_config_file=True)
     parser.add('--model', required=True, help="Model to evaluate.")
     parser.add('--dataset', choices=['normal', 'transient'], help='Which dataset to use.')
     parser.add('--sbr', type=float, help='sbr for transient')
@@ -69,7 +69,7 @@ class NYUv2Evaluation:
             # print(pred['metrics'])
             # DEBUG
             # if i == 1:
-                # break
+            #     break
         return preds
 
     def compute_metrics(self, data, pred):

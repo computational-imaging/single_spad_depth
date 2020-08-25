@@ -15,9 +15,9 @@ def cfg():
     parser.add('--ambient-bins', type=int, default=100)
     parser.add('--edge-coeff', type=float, default=5.)
     parser.add('--n-std', type=int, default=1)
-    parser.add('--alpha', type=float)
-    parser.add('--beta', type=float)
-    parser.add('--offset', type=float)
+    parser.add('--alpha', type=float, default=0.6569154266167957)
+    parser.add('--beta', type=float, default=9.972175646365525)
+    parser.add('--offset', type=float, default=0.)
     args, _ = parser.parse_known_args()
     return vars(args)
 

@@ -9,11 +9,13 @@ import configargparse
 from .densedepth_backend.model import create_model
 from .densedepth_backend.utils import scale_up, predict
 
+from ..experiment import ex
+
 @ex.config('DenseDepth')
 def cfg():
     backend = Path(__file__).parent/'densedepth_backend'
     parser = configargparse.ArgParser(default_config_files=[str(backend/'densedepth.cfg')])
-    parser.add('--weights-file', required=True, default=backend/'nyu.h5')
+    parser.add('--weights-file', default=str(backend/'nyu.h5'))
     config, _ = parser.parse_known_args()
     return vars(config)
 

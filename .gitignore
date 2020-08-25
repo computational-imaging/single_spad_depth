@@ -13,3 +13,4 @@ htmlcov
 *.npz
 *.mat
 *.zip
+*.h5

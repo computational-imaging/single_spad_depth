@@ -1,0 +1,7 @@
+dataset: transient
+split: test
+model: MDETransient
+transform:
+  - crop_image_and_depth
+  - dorn_preprocess
+  - to_tensor
