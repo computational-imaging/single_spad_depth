@@ -9,8 +9,7 @@ build
 htmlcov
 
 # Data files
-*.np
-*.npz
+*.np[yz]
 *.mat
 *.zip
 *.h5

@@ -32,7 +32,6 @@ def cfg():
     parser.add('--transform', action='append')
     parser.add('--output-dir', default=str(Path(__file__).parent/'results'))
     config, _ = parser.parse_known_args()
-    # set_trace()
     return vars(config)
 
 @ex.setup('NYUv2Evaluation')
@@ -69,7 +68,7 @@ class NYUv2Evaluation:
             # print(pred['metrics'])
             # DEBUG
             # if i == 1:
-            #     break
+                # break
         return preds
 
     def compute_metrics(self, data, pred):
@@ -91,11 +90,13 @@ def summarize(all_metric_dicts):
 
 if __name__ == '__main__':
     evaluator = ex.get_and_configure('NYUv2Evaluation')
+    print(f"Evaluating {ex.configs['MDE']['mde']} in " + \
+          f"{ex.configs['NYUv2Evaluation']['model']} mode.")
     preds = evaluator.evaluate()
     summary = summarize([p['metrics'] for p in preds])
     config = cfg()
     model_name = config['model']
-    mde_name = evaluator.model.mde.__class__.__name__
+    mde_name = ex.configs['MDE']['mde']
     output_dir = Path(config['output_dir'])/f'{model_name}'/f'{mde_name}'
     output_dir.mkdir(parents=True, exist_ok=True)
     np.save(output_dir/'summary', summary)

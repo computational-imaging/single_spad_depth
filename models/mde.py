@@ -54,7 +54,7 @@ class MDE:
         """
         Wraps the mde so that it takes torch input and produces numpy output
         image_tensor is a torch float tensor in [0, 1] in NCHW format from the torch dataloader
-        out is a numpy array in NHWC format
+        out is a numpy array in NCHW format
         """
         img = data[self.key]
         if self.in_order == 'nhwc':
