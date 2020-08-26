@@ -11,5 +11,9 @@ htmlcov
 # Data files
 *.np[yz]
 *.mat
+*.pt
 *.zip
 *.h5
+*.pkl
+
+paper

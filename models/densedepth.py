@@ -15,15 +15,13 @@ from ..experiment import ex
 def cfg():
     backend = Path(__file__).parent/'densedepth_backend'
     parser = configargparse.ArgParser(default_config_files=[str(backend/'densedepth.cfg')])
-    parser.add('--weights-file', default=str(backend/'nyu.h5'))
+    parser.add('--densedepth-weights', default=str(backend/'nyu.h5'))
     config, _ = parser.parse_known_args()
     return vars(config)
 
 @ex.setup('DenseDepth')
 def setup(config):
-    return DenseDepth(**config)
-
-
+    return DenseDepth(weights_file=config['densedepth_weights'])
 
 @ex.entity
 class DenseDepth:

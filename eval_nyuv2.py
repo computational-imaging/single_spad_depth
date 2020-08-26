@@ -13,6 +13,7 @@ from .metrics import get_depth_metrics
 # Models
 from .models.mde import MDE
 from .models.mde_median import MDEMedian
+from .models.mde_gt_hist import MDEGTHist
 from .models.mde_transient import MDETransient
 
 # Datasets
@@ -22,7 +23,7 @@ from .experiment import ex
 
 @ex.config('NYUv2Evaluation')
 def cfg():
-    parser = configargparse.ArgParser(default_config_files=[str(Path(__file__).parent/'eval_mde.yml')],
+    parser = configargparse.ArgParser(default_config_files=[str(Path(__file__).parent/'mde.yml')],
                                       config_file_parser_class=configargparse.YAMLConfigFileParser)
     parser.add('--eval-config', is_config_file=True)
     parser.add('--model', required=True, help="Model to evaluate.")

@@ -9,6 +9,7 @@ from pdb import set_trace
 # MDEs
 from .dorn import DORN
 from .densedepth import DenseDepth
+from .midas import MiDaS
 
 from ..experiment import ex
 
