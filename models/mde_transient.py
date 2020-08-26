@@ -1,83 +1,102 @@
 #!/usr/bin/env python3
 
 import configargparse
+import numpy as np
+import torch
 from pathlib import Path
-from ..discretize import SI, rescale_hist
+from pdb import set_trace
+from ..discretize import SI, rescale_hist, Uniform
 from ..data.nyu_depth_v2.simulate_single_spad import rgb2gray
+from ..data.nyu_depth_v2.nyuv2_dataset import NYUV2_CROP
 from ..experiment import ex
 
 @ex.config('MDETransient')
 def cfg():
     parser = configargparse.ArgParser(default_config_files=[str(Path(__file__).parent/'mde_transient.cfg')])
-    parser.add('--mde', choices=['DORN', 'DenseDepth', 'MiDaS'], required=True)
-    parser.add('--refl-est', choices=['grey', 'red'], required=True)
-    parser.add('--n-sid-bins', type=int, default=68)
-    parser.add('--ambient-bins', type=int, default=100)
+    parser.add('--refl-est', choices=['gray', 'red'], required=True)
+    parser.add('--source-n-sid-bins', type=int, default=68)
+    parser.add('--n-ambient-bins', type=int, default=60)
     parser.add('--edge-coeff', type=float, default=5.)
     parser.add('--n-std', type=int, default=1)
-    parser.add('--alpha', type=float, default=0.6569154266167957)
-    parser.add('--beta', type=float, default=9.972175646365525)
-    parser.add('--offset', type=float, default=0.)
+    parser.add('--min-depth', type=float, default=0.)
+    parser.add('--max-depth', type=float, default=10.)
+    parser.add('--source-alpha', type=float, default=0.6569154266167957)
+    parser.add('--source-beta', type=float, default=9.972175646365525)
+    parser.add('--source-offset', type=float, default=0.)
     args, _ = parser.parse_known_args()
     return vars(args)
 
 @ex.setup('MDETransient')
 def setup(config):
-    mde = ex.get_and_configure(config['mde'])
-    preproc = TransientPreprocessor(config['n_sid_bins'],
+    mde_model = ex.get_and_configure('MDE')
+    preproc = TransientPreprocessor(config['source_n_sid_bins'],
                                     config['n_ambient_bins'],
-                                    config['beta'],
+                                    config['edge_coeff'],
                                     config['n_std'])
-    if config['refl_est'] == 'grey':
-        refl_est = refl_est_grey
+    if config['refl_est'] == 'gray':
+        refl_est = refl_est_gray
     elif config['refl_est'] == 'red':
         refl_est = refl_est_red
-    source_disc = SI(config['n_sid_bins'],
-                     config['alpha'],
-                     config['beta'],
-                     config['offset'])
-    return MDETransient(mde=mde,
+    source_disc = SI(config['source_n_sid_bins'],
+                     config['source_alpha'],
+                     config['source_beta'],
+                     config['source_offset'])
+    return MDETransient(mde_model=mde_model,
                         preproc=preproc,
                         refl_est=refl_est,
-                        source_disc=source_disc)
+                        source_disc=source_disc,
+                        min_depth=config['min_depth'],
+                        max_depth=config['max_depth'])
 
 @ex.entity
 class MDETransient:
-    def __init__(self, mde, preproc, refl_est, source_disc):
-        self.mde = mde                   # MDE function, torch (channels first) -> np (single channel)
+    def __init__(self, mde_model, preproc, refl_est, source_disc,
+                 min_depth, max_depth, crop=NYUV2_CROP,
+                 image_key='image', transient_key='transient'):
+        self.mde_model = mde_model       # MDE function, torch (channels first) -> torch (single channel)
         self.refl_est = refl_est         # Reflectance estimator, torch -> np
         self.preproc = preproc           # Preprocessing function, np -> np
         self.source_disc = source_disc   # Discretization for reflectance-weighted depth hist
+        self.min_depth = min_depth
+        self.max_depth = max_depth
+        self.crop = crop
+        self.image_key = image_key         # Key in data for RGB image
+        self.transient_key = transient_key # Key in data for transient
+
+    def apply_crop(self, img):
+        return img[self.crop[0]:self.crop[1], self.crop[2]:self.crop[3]]
 
     def __call__(self, data):
-        """
-        Inputs are torch tensors
-        """
-        return self.predict(data['image'], data['transient'].numpy())
-
-    def predict(self, image_tensor, transient):
-        depth_init = self.mde(image_tensor)
-        reflectance_est = self.refl_est(image_tnsor)
+        depth_init = self.mde_model(data).numpy().squeeze()
+        reflectance_est = self.refl_est(data[self.image_key]).squeeze()
+        # Pre-crop
+        depth_init = self.apply_crop(depth_init)
+        reflectance_est = self.apply_crop(reflectance_est)
 
         # compute weighted depth hist
         source_hist = self.weighted_histogram(depth_init, reflectance_est)
 
-        target_hist, target_disc = self.preproc(transient)
+        transient = data[self.transient_key].numpy().squeeze()
+        counts_disc = Uniform(len(transient), self.min_depth, self.max_depth)
+        target_hist, target_disc = \
+            self.preproc(data[self.transient_key].numpy().squeeze(),
+                         counts_disc)
         depth_final = \
             self.hist_match(depth_init,
-                            source_hist, source_disc,
+                            source_hist, self.source_disc,
                             target_hist, target_disc)
+        depth_final = torch.from_numpy(depth_final)
         return depth_final
 
     def weighted_histogram(self, depth, weights):
         depth_hist, _ = np.histogram(depth, weights=weights,
-                                    bins=self.source_disc.bin_edges)
+                                     bins=self.source_disc.bin_edges)
         return depth_hist
 
     def hist_match(self, depth_init,
                    source_hist, source_disc,
                    target_hist, target_disc):
-        movement = self.find_movement(source_hist, target_hist, normalize_to)
+        movement = self.find_movement(source_hist, target_hist)
         depth_final = self.move_pixels(depth_init, movement,
                                        source_disc, target_disc)
         return depth_final
@@ -97,15 +116,15 @@ class MDETransient:
         for row in range(len(source_hist)):
             for col in range(len(target_hist)):
                 pixels_rem = source_hist[row] - np.sum(movement[row, :col])
-                pixels_req = hist_to[col] - np.sum(movement[:row, col])
+                pixels_req = target_hist[col] - np.sum(movement[:row, col])
                 movement[row, col] = np.clip(np.minimum(pixels_rem, pixels_req), a_min=0., a_max=None)
         return movement
 
     def move_pixels(self, depth_init, movement, source_disc, target_disc):
         index_init = source_disc.get_sid_index_from_value(depth_init)
-        cpfs = np.cumsum(T, axis=1)  # Cumulative sum across target dimension
-        pixel_cpfs = cpfs[init_index, :] # [H, W, cpf dim]
-        p = np.random.uniform(0., pixel_cpfs[..., -1], size=init_index.shape)
+        cpfs = np.cumsum(movement, axis=1)  # Cumulative sum across target dimension
+        pixel_cpfs = cpfs[index_init, :] # [H, W, cpf dim]
+        p = np.random.uniform(0., pixel_cpfs[..., -1], size=index_init.shape)
         # Use argmax trick to get first k where p[i,j] < pixel_cpfs[i,j,k]
         index_pred = (np.expand_dims(p, 2) < pixel_cpfs).argmax(axis=2)
         depth_pred = target_disc.get_value_from_sid_index(index_pred)
@@ -117,10 +136,10 @@ class TransientPreprocessor:
     def __init__(self, n_sid_bins, n_ambient_bins, edge_coeff, n_std):
         self.n_sid_bins = n_sid_bins                # SID bins to discretize transient to
         self.n_ambient_bins = n_ambient_bins        # Number of bins to use to estimate ambient
-        self.edge_coeff                             # Coefficient that controls edge detection
+        self.edge_coeff = edge_coeff                # Coefficient that controls edge detection
         self.n_std = n_std                          # Number of std devs above ambient to cut
 
-    def preprocess_transient(self, raw_counts, counts_disc):
+    def __call__(self, raw_counts, counts_disc):
         """
         Apply preprocessing to raw transient data.
         """
@@ -128,6 +147,7 @@ class TransientPreprocessor:
         processed_counts = self.remove_ambient(raw_counts,
                                       ambient=ambient,
                                       grad_th=self.edge_coeff*np.sqrt(2*ambient))
+        # set_trace()
         processed_counts = self.correct_falloff(processed_counts, counts_disc)
 
         # Scale SID object to maximize bin utilization
@@ -136,11 +156,11 @@ class TransientPreprocessor:
         min_depth = counts_disc.bin_edges[min_depth_bin]
         max_depth = counts_disc.bin_edges[max_depth_bin+1]
         sid_disc = SI(n_bins=self.n_sid_bins,
-                      alpha=min_depth_pred,
-                      beta=max_depth_pred,
+                      alpha=min_depth,
+                      beta=max_depth,
                       offset=0.)
         processed_counts = rescale_hist(processed_counts, counts_disc, sid_disc)
-        return processed_counts
+        return processed_counts, sid_disc
 
     def estimate_ambient(self, counts):
         return np.mean(counts[:self.n_ambient_bins])
@@ -151,15 +171,14 @@ class TransientPreprocessor:
         by using the gradients and below by using the ambient estimate.
         """
         # Detect edges:
-        assert len(counts.shape) == 1
         edges = np.abs(np.diff(counts)) > grad_th
         first = np.nonzero(edges)[0][1] + 1  # Right side of the first edge
         last = np.nonzero(edges)[0][-1]      # Left side of the second edge
         threshold = ambient + self.n_std * np.sqrt(ambient)
         # Walk first and last backward and forward to get below the threshold
-        while first >= 0 and spad[first] > threshold:
+        while first >= 0 and counts[first] > threshold:
             first -= 1
-        while last < len(spad) and spad[last] > threshold:
+        while last < len(counts) and counts[last] > threshold:
             last += 1
         counts[:first] = 0.
         counts[last+1:] = 0.
@@ -169,9 +188,10 @@ class TransientPreprocessor:
         return counts * counts_disc.bin_values ** 2
 
 @ex.entity
-def refl_est_grey(nchw_tensor):
+def refl_est_gray(nchw_tensor):
     """
-    tensor should be a NCHW torch tensor
+    tensor should be a NCHW torch tensor in RGB channel order and in range [0, 1]
+    returns a nhw reflectance map
     """
     assert len(nchw_tensor.shape) == 4
     nhwc = nchw_tensor.numpy().transpose(0, 2, 3, 1)
@@ -181,7 +201,8 @@ def refl_est_grey(nchw_tensor):
 @ex.entity
 def refl_est_red(nchw_tensor):
     """
-    tensor should be a NCHW torch tensor
+    tensor should be a NCHW torch tensor in RGB channel order and in range [0, 1]
+    returns a nhw reflectance map
     """
     assert len(nchw_tensor.shape) == 4
     nhwc = nchw_tensor.numpy().transpose(0, 2, 3, 1)

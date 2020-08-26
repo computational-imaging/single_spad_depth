@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import numpy as np
+from pdb import set_trace
 
 class Discretization:
     def __init__(self):
@@ -33,12 +34,6 @@ class SI(Discretization):
     Discretizes the region [alpha, beta]
     Offset controls spacing even further by discretizing [alpha + offset, beta +
     offset] and then subtracting offset from all bin edges.
-
-
-    Bonus: Includes support for when the index is -1 (in which case the value
-    should be alpha) and when it is sid_bins (in which case the value should be
-    beta).
-
 
     Works in numpy.
     """
@@ -82,7 +77,7 @@ class SI(Discretization):
         :param sid_index: The array of indices.
         :return: The array of values correspondding to those indices
         """
-        return np.take(self.sid_bin_values, sid_index)
+        return np.take(self.bin_values, sid_index)
 
     def __repr__(self):
         return self.__class__.__name__ + \
@@ -121,8 +116,10 @@ def gen_overlapping_bins(to_bin, to_edges, from_left, from_right):
     to_left = to_edges[to_bin]
     to_right = to_edges[to_bin+1]
     # Find a to_bin that overlaps with [from_left, from_right]
-    while to_right < from_left and to_bin < len(to_edges) - 1:
+    while to_right < from_left:
         to_bin += 1
+        if to_bin >= len(to_edges) - 1:
+            return  # No more bins left
         to_left = to_edges[to_bin]
         to_right = to_edges[to_bin+1]
     # to_right >= from_left

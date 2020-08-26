@@ -30,6 +30,8 @@ def cfg():
     parser.add('--sbr', type=float, help='sbr for transient')
     parser.add('--split', choices=['train', 'test'], required=True)
     parser.add('--transform', action='append')
+    parser.add('--pre-cropped', action='store_true',
+               help="True if the method being evaluated already outputs cropped depth images.")
     parser.add('--output-dir', default=str(Path(__file__).parent/'results'))
     config, _ = parser.parse_known_args()
     return vars(config)
@@ -43,14 +45,15 @@ def setup(config):
         dataset = NYUDepthv2Transient(split=config['split'], sbr=config['sbr'])
     transform = Compose([ex.transforms[t] for t in config['transform']])
     dataset.transform = transform
-    return NYUv2Evaluation(model, dataset)
+    return NYUv2Evaluation(model, dataset, pre_cropped=config['pre_cropped'])
 
 @ex.entity
 class NYUv2Evaluation:
-    def __init__(self, model, dataset, crop=NYUV2_CROP):
+    def __init__(self, model, dataset, crop=NYUV2_CROP, pre_cropped=False):
         self.model = model
         self.dataset = dataset
         self.crop = crop
+        self.pre_cropped = pre_cropped
 
     def evaluate(self):
         dataloader = DataLoader(self.dataset, batch_size=1)
@@ -58,7 +61,9 @@ class NYUv2Evaluation:
         for i, data in tqdm(enumerate(dataloader), total=len(dataloader.dataset)):
             depth = self.model(data)
             pred = {'depth': depth}
-            if self.crop is not None:
+            if self.pre_cropped:
+                pred['depth_cropped'] = depth
+            else:
                 pred['depth_cropped'] = depth[...,
                                               self.crop[0]:self.crop[1],
                                               self.crop[2]:self.crop[3]]
@@ -67,7 +72,8 @@ class NYUv2Evaluation:
             # set_trace()
             # print(pred['metrics'])
             # DEBUG
-            # if i == 1:
+            # if i == 0:
+                # print(pred['metrics'])
                 # break
         return preds
 
@@ -88,15 +94,19 @@ def summarize(all_metric_dicts):
         summary[k] = np.mean([metric_dict[k] for metric_dict in all_metric_dicts])
     return summary
 
+
+
 if __name__ == '__main__':
     evaluator = ex.get_and_configure('NYUv2Evaluation')
     print(f"Evaluating {ex.configs['MDE']['mde']} in " + \
           f"{ex.configs['NYUv2Evaluation']['model']} mode.")
     preds = evaluator.evaluate()
     summary = summarize([p['metrics'] for p in preds])
+    depth_preds_cropped = np.stack([p['depth_cropped'].squeeze() for p in preds], axis=0)
     config = cfg()
     model_name = config['model']
     mde_name = ex.configs['MDE']['mde']
     output_dir = Path(config['output_dir'])/f'{model_name}'/f'{mde_name}'
     output_dir.mkdir(parents=True, exist_ok=True)
     np.save(output_dir/'summary', summary)
+    np.save(output_dir/'preds_cropped', depth_preds_cropped)
