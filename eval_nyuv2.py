@@ -108,6 +108,8 @@ if __name__ == '__main__':
     model_name = config['model']
     mde_name = ex.configs['MDE']['mde']
     output_dir = Path(config['output_dir'])/f'{model_name}'/f'{mde_name}'
+    if config['dataset'] == 'transient':
+        output_dir = output_dir/f'sbr_{config["sbr"]}'
     output_dir.mkdir(parents=True, exist_ok=True)
     np.save(output_dir/'summary', summary)
     np.save(output_dir/'preds_cropped', depth_preds_cropped)

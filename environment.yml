@@ -1,4 +1,4 @@
-name: spad-single
+name: single-spad-depth
 
 channels:
   - pytorch
