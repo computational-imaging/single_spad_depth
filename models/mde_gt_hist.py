@@ -9,8 +9,8 @@ from pdb import set_trace
 # MDEs
 from .mde import MDE
 
-from ..data.nyu_depth_v2.nyuv2_dataset import NYUV2_CROP
-from ..experiment import ex
+from data.nyu_depth_v2.nyuv2_dataset import NYUV2_CROP
+from core.experiment import ex
 
 @ex.config('MDEGTHist')
 def cfg():
@@ -32,12 +32,12 @@ class MDEGTHist:
         self.crop = crop
 
     def __call__(self, data):
-        init = self.mde_model(data).numpy().squeeze()
+        init = self.mde_model(data).cpu().numpy().squeeze()
         if self.crop is not None:
             init = init[...,
                         self.crop[0]:self.crop[1],
                         self.crop[2]:self.crop[3]]
-        template = data[self.gt_key].numpy().squeeze()
+        template = data[self.gt_key].cpu().numpy().squeeze()
         pred = self.hist_match(init, template)
         return torch.from_numpy(pred)
 

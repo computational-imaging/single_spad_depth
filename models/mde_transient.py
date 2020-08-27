@@ -5,14 +5,15 @@ import numpy as np
 import torch
 from pathlib import Path
 from pdb import set_trace
-from ..discretize import SI, rescale_hist, Uniform
-from ..data.nyu_depth_v2.simulate_single_spad import rgb2gray
-from ..data.nyu_depth_v2.nyuv2_dataset import NYUV2_CROP
-from ..experiment import ex
+from models.discretize import SI, rescale_hist, Uniform
+from data.nyu_depth_v2.nyuv2_dataset import NYUV2_CROP
+
+from core.experiment import ex
 
 @ex.config('MDETransient')
 def cfg():
-    parser = configargparse.ArgParser(default_config_files=[str(Path(__file__).parent/'mde_transient.cfg')])
+    parser = configargparse.ArgParser(default_config_files=[str(Path(__file__).parent/'dorn_transient.cfg')])
+    parser.add('--mde-transient-config', is_config_file=True)
     parser.add('--refl-est', choices=['gray', 'red'], required=True)
     parser.add('--source-n-sid-bins', type=int, default=68)
     parser.add('--n-ambient-bins', type=int, default=60)
@@ -54,7 +55,7 @@ class MDETransient:
                  min_depth, max_depth, crop=NYUV2_CROP,
                  image_key='image', transient_key='transient'):
         self.mde_model = mde_model       # MDE function, torch (channels first) -> torch (single channel)
-        self.refl_est = refl_est         # Reflectance estimator, torch -> np
+        self.refl_est = refl_est         # Reflectance estimator, torch -> torch
         self.preproc = preproc           # Preprocessing function, np -> np
         self.source_disc = source_disc   # Discretization for reflectance-weighted depth hist
         self.min_depth = min_depth
@@ -67,8 +68,9 @@ class MDETransient:
         return img[self.crop[0]:self.crop[1], self.crop[2]:self.crop[3]]
 
     def __call__(self, data):
-        depth_init = self.mde_model(data).numpy().squeeze()
-        reflectance_est = self.refl_est(data[self.image_key]).squeeze()
+        depth_init = self.mde_model(data).cpu().numpy().squeeze()
+        reflectance_est = self.refl_est(data[self.image_key]).cpu().numpy().squeeze()
+        transient = data[self.transient_key].cpu().numpy().squeeze()
         # Pre-crop
         depth_init = self.apply_crop(depth_init)
         reflectance_est = self.apply_crop(reflectance_est)
@@ -76,11 +78,8 @@ class MDETransient:
         # compute weighted depth hist
         source_hist = self.weighted_histogram(depth_init, reflectance_est)
 
-        transient = data[self.transient_key].numpy().squeeze()
         counts_disc = Uniform(len(transient), self.min_depth, self.max_depth)
-        target_hist, target_disc = \
-            self.preproc(data[self.transient_key].numpy().squeeze(),
-                         counts_disc)
+        target_hist, target_disc = self.preproc(transient, counts_disc)
         depth_final = \
             self.hist_match(depth_init,
                             source_hist, self.source_disc,
@@ -187,14 +186,19 @@ class TransientPreprocessor:
     def correct_falloff(self, counts, counts_disc):
         return counts * counts_disc.bin_values ** 2
 
+
+def rgb2gray(img):
+    """Requires (N)HWC tensor"""
+    return 0.2989 * img[..., 0] + 0.5870 * img[..., 1] + 0.1140 * img[..., 2]
+
 @ex.entity
 def refl_est_gray(nchw_tensor):
     """
     tensor should be a NCHW torch tensor in RGB channel order and in range [0, 1]
-    returns a nhw reflectance map
+    returns a nhw reflectance map torch tensor
     """
     assert len(nchw_tensor.shape) == 4
-    nhwc = nchw_tensor.numpy().transpose(0, 2, 3, 1)
+    nhwc = nchw_tensor.permute(0, 2, 3, 1)
     refl_est = rgb2gray(nhwc)
     return refl_est
 
@@ -202,9 +206,9 @@ def refl_est_gray(nchw_tensor):
 def refl_est_red(nchw_tensor):
     """
     tensor should be a NCHW torch tensor in RGB channel order and in range [0, 1]
-    returns a nhw reflectance map
+    returns a nhw reflectance map torch tensor
     """
     assert len(nchw_tensor.shape) == 4
-    nhwc = nchw_tensor.numpy().transpose(0, 2, 3, 1)
+    nhwc = nchw_tensor.permute(0, 2, 3, 1)
     refl_est = nhwc[..., 0]
     return refl_est

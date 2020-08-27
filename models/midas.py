@@ -7,8 +7,9 @@ from pdb import set_trace
 from pathlib import Path
 from .midas_backend.monodepth_net import MonoDepthNet
 from .midas_backend.utils import resize_depth, resize_image
+import os
 
-from ..experiment import ex
+from core.experiment import ex
 
 @ex.config('MiDaS')
 def cfg():
@@ -17,21 +18,31 @@ def cfg():
     parser.add('--midas-path', default=str(backend/'model.pt'))
     parser.add('--midas-min-depth', type=float, default=0.1)
     parser.add('--midas-max-depth', type=float, default=10.)
+    parser.add('--gpu', type=str)
     args, _ = parser.parse_known_args()
     return vars(args)
 
 @ex.setup('MiDaS')
 def setup(config):
-    return MiDaS(model_path=config['midas_path'],
-                 min_depth=config['midas_min_depth'],
-                 max_depth=config['midas_max_depth'])
+    midas = MiDaS(model_path=config['midas_path'],
+                  min_depth=config['midas_min_depth'],
+                  max_depth=config['midas_max_depth'])
+    if config['gpu'] is not None and torch.cuda.is_available():
+        os.environ['CUDA_VISIBLE_DEVICES'] = config['gpu']
+        midas.model.to('cuda')
+        midas.device='cuda'
+        print(f"Using gpu {config['gpu']} (CUDA_VISIBLE_DEVICES = {os.environ['CUDA_VISIBLE_DEVICES']}).")
+    else:
+        print("Using cpu.")
+    return midas
 
 @ex.entity
 class MiDaS:
-    def __init__(self, model_path, min_depth, max_depth):
+    def __init__(self, model_path, min_depth, max_depth, device='cpu'):
         self.model = MonoDepthNet(model_path)
         self.model.eval()
         self.depth_range = (min_depth, max_depth)
+        self.device = device
 
     def __call__(self, image):
         """
@@ -45,7 +56,7 @@ class MiDaS:
         img = image.squeeze()
         depth_range = self.depth_range
         img_input = resize_image(img)
-
+        img_input = img_input.to(self.device)
         # compute
 
         with torch.no_grad():

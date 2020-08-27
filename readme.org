@@ -15,13 +15,7 @@ the command
 #+BEGIN_SRC sh
 conda activate spad-single
 #+END_SRC
-*** Pip
-Run the following command from the root directory. This will install all the
-required packages into the current environment.
-#+BEGIN_SRC sh
-python setup.py install
-#+END_SRC
-** Data
+** Getting and Preprocessing the Data
 *** NYU Depth v2
 Download the labeled dataset and the official train/test splits by running the
 following commands from the root directory
@@ -32,13 +26,50 @@ curl http://horatio.cs.nyu.edu/mit/silberman/indoor_seg_sup/splits.mat -o ./data
 Then, run the split script to generate =.npz= files containing the dataset
 parts:
 #+BEGIN_SRC sh
-python data/nyu_depth_v2/split_nyuv2.py
+python split_nyuv2.py
+#+END_SRC
+To simulate the SPAD on the test set run the command
+#+BEGIN_SRC sh
+python simulate_single_spad.py test
 #+END_SRC
 *** Captured Data
 TODO
-
+*** Model Weights
+DORN, DenseDepth, and MiDaS weights can be downloaded at the following links:
+- DORN: =https://drive.google.com/uc?export=download&id=1WPD2mf2wSvPwisaeeEDvzyxkAekj_rxR=
+- DenseDepth: =https://drive.google.com/uc?export=download&id=1Ua73crX4X8ma4h-MEIF9C1gXLmWOt8Yn
+- MiDaS: =https://drive.google.com/uc?export=download&id=
+Each should be placed in the relevant =*_backend= folder in the =models= directory.
 ** Running on NYU Depth v2
+The basic pattern is to run the command
 #+BEGIN_SRC sh
-python -m eval_nyuv2.py
+python eval_nyuv2.py \
+[--eval-config method.yml] \
+[--mde-config single_spad_depth/models/<mde.cfg>] \
+[--mde-transient-config single_spad_depth/models/<mde_transient.cfg>]
+[--sbr SBR]
+[--gpu GPU]
 #+END_SRC
+method.yml can take on the following values:
+- =mde.yml= to run the MDE alone (default)
+- =median.yml= for median matching
+- =gt_hist.yml= for ground truth histogram matching
+- =transient.yml= for transient matching, note that the =--sbr= option will need
+  to be set if this is used.
+mde.cfg selects the monocular depth estimator and can be one of
+- =dorn_mde.cfg= (default)
+- =densedepth_mde.cfg=
+- =midas_mde.cfg=
+For running transient matching, additionally specify mde_transient.cfg to be one
+of
+- =dorn_transient.cfg=
+- =densedepth_transient.cfg=
+- =midas_transient.cfg=
+according to which model is being used. This sets further model-specific
+parameters necessary for our method.
+For running on GPU, use the =--gpu= argument with number indicating which one to
+use.
+
+An example command is given in =example.sh=
 ** Running on Captured Data
+TODO

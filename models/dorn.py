@@ -6,12 +6,13 @@ import torch.nn.functional as F
 import torchvision.utils as vutils
 import numpy as np
 import cv2
+import os
 from pathlib import Path
 from pdb import set_trace
 import configargparse
 import os
 
-from ..experiment import ex
+from core.experiment import ex
 
 def main():
     model = ex.entities['DORN']
@@ -36,66 +37,32 @@ def cfg():
     parser.add('--beta', type=float, default=9.972175646365525)
     parser.add('--frozen', type=bool, default=True)
     parser.add('--state-dict-file', default=backend/"dorn_nyuv2_rgb.pth")
+    parser.add('--gpu', type=str)
     config, _ = parser.parse_known_args()
     return vars(config)
 
-# class SIDTorch:
-    # """
-    # Reimplementation of spacing-increasing discretization but using pytorch
-    # functions.
-    # """
-    # def __init__(self, n_bins, alpha, beta, offset):
-    #     self.n_bins = n_bins
-    #     self.alpha = alpha
-    #     self.beta = beta
-    #     self.offset = offset
-
-    #     # Derived quantities
-    #     self.alpha_star = self.alpha + offset
-    #     self.beta_star = self.beta + offset
-    #     bin_edges = np.array(range(n_bins + 1)).astype(np.float32)
-    #     self.bin_edges = torch.tensor(np.exp(np.log(self.alpha_star) +
-    #                                          bin_edges / self.n_bins * np.log(self.beta_star / self.alpha_star)))
-    #     self.bin_values = (self.bin_edges[:-1] + self.bin_edges[1:]) / 2 - self.offset
-    #     self.bin_values = torch.cat([self.bin_values,
-    #                                      torch.tensor([self.beta, self.alpha])], 0)
-    #     # Do the above so that:
-    #     # self.bin_values[-1] = self.alpha < self.bin_values[0]
-    #     # and
-    #     # self.bin_values[n_bins] = self.beta > self.bin_values[n_bins-1]
-
-    # def to(self, device):
-    #     self.bin_values = self.bin_values.to(device)
-    #     self.bin_edges = self.bin_edges.to(device)
-    #     # print(self.bin_values.device)
-
-    # def get_sid_index_from_value(self, arr):
-    #     """
-    #     Given an array of values in the range [alpha, beta], return the
-    #     indices of the bins they correspond to
-    #     :param arr: The array to turn into indices.
-    #     :return: The array of indices.
-    #     """
-    #     # print(arr + self.offset)
-    #     temp = (self.n_bins * (torch.log(arr + self.offset) - np.log(self.alpha_star)) /
-    #                             (np.log(self.beta_star) - np.log(self.alpha_star)))
-    #     sid_index = torch.floor(temp).long()
-    #     sid_index = torch.clamp(sid_index, min=0, max=self.n_bins-1)
-    #     # An index of -1 indicates alpha, while self.n_bins indicates beta
-    #     return sid_index
-
-    # def get_value_from_sid_index(self, index):
-    #     """
-    #     Given an array of indices in the range {0,...,n_bins-1},
-    #     return the representative value of the selected bin.
-    #     :param sid_index: The array of indices.
-    #     :return: The array of values correspondding to those indices
-    #     """
-    #     return torch.take(self.bin_values, index)
-
-    # def __repr__(self):
-    #     return repr((self.sid_bins, self.alpha, self.b
-#                     eta, self.offset))
+@ex.setup('DORN')
+def setup(config):
+    dorn = DORN(in_channels=config['in_channels'],
+                in_height=config['in_height'],
+                in_width=config['in_width'],
+                full_height=config['full_height'],
+                full_width=config['full_width'],
+                sid_bins=config['sid_bins'],
+                offset=config['offset'],
+                min_depth=config['min_depth'],
+                max_depth=config['max_depth'],
+                alpha=config['alpha'],
+                beta=config['beta'],
+                frozen=config['frozen'],
+                state_dict_file=config['state_dict_file'])
+    if config['gpu'] is not None and torch.cuda.is_available():
+        os.environ['CUDA_VISIBLE_DEVICES'] = config['gpu']
+        dorn.to('cuda')
+        print(f"Using gpu {config['gpu']} (CUDA_VISIBLE_DEVICES = {os.environ['CUDA_VISIBLE_DEVICES']}).")
+    else:
+        print("Using cpu.")
+    return dorn
 
 class SIDTorch:
     """
@@ -171,9 +138,6 @@ def preprocess(data):
     # data['dorn_image'] = image.transpose(2, 0, 1) # Make channels first
     return data
 
-@ex.setup('DORN')
-def setup(config):
-    return DORN(**config)
 
 @ex.entity
 class DORN(nn.Module):

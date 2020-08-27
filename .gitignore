@@ -8,6 +8,9 @@ tmp/
 build
 htmlcov
 
+# Emacs
+*.el
+
 # Data files
 *.np[yz]
 *.mat

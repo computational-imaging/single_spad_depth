@@ -8,18 +8,19 @@ import configargparse
 from pdb import set_trace
 from tqdm import tqdm
 from pathlib import Path
+import os
 
-from .metrics import get_depth_metrics
+from core.metrics import get_depth_metrics
 # Models
-from .models.mde import MDE
-from .models.mde_median import MDEMedian
-from .models.mde_gt_hist import MDEGTHist
-from .models.mde_transient import MDETransient
+from models.mde import MDE
+from models.mde_median import MDEMedian
+from models.mde_gt_hist import MDEGTHist
+from models.mde_transient import MDETransient
 
 # Datasets
-from .data.nyu_depth_v2.nyuv2_dataset import NYUDepthv2, NYUDepthv2Transient, NYUV2_CROP
+from data.nyu_depth_v2.nyuv2_dataset import NYUDepthv2, NYUDepthv2Transient, NYUV2_CROP
 
-from .experiment import ex
+from core.experiment import ex
 
 @ex.config('NYUv2Evaluation')
 def cfg():
@@ -34,6 +35,7 @@ def cfg():
     parser.add('--pre-cropped', action='store_true',
                help="True if the method being evaluated already outputs cropped depth images.")
     parser.add('--output-dir', default=str(Path(__file__).parent/'results'))
+    parser.add('--gpu', type=str)
     config, _ = parser.parse_known_args()
     return vars(config)
 
@@ -46,13 +48,24 @@ def setup(config):
         dataset = NYUDepthv2Transient(split=config['split'], sbr=config['sbr'])
     transform = Compose([ex.transforms[t] for t in config['transform']])
     dataset.transform = transform
-    return NYUv2Evaluation(model, dataset, pre_cropped=config['pre_cropped'])
+    if config['gpu'] is not None and torch.cuda.is_available():
+        os.environ['CUDA_VISIBLE_DEVICES'] = config['gpu']
+        device = torch.device('cuda')
+        print(f"Using gpu {config['gpu']} (CUDA_VISIBLE_DEVICES = {os.environ['CUDA_VISIBLE_DEVICES']}).")
+    else:
+        device = torch.device('cpu')
+        print("Using cpu.")
+    return NYUv2Evaluation(model=model,
+                           dataset=dataset,
+                           device=device,
+                           pre_cropped=config['pre_cropped'])
 
 @ex.entity
 class NYUv2Evaluation:
-    def __init__(self, model, dataset, crop=NYUV2_CROP, pre_cropped=False):
+    def __init__(self, model, dataset, device, crop=NYUV2_CROP, pre_cropped=False):
         self.model = model
         self.dataset = dataset
+        self.device = device
         self.crop = crop
         self.pre_cropped = pre_cropped
 
@@ -60,6 +73,8 @@ class NYUv2Evaluation:
         dataloader = DataLoader(self.dataset, batch_size=1)
         preds = []
         for i, data in tqdm(enumerate(dataloader), total=len(dataloader.dataset)):
+            for k, v in data.items():
+                data[k] = v.to(self.device)
             depth = self.model(data)
             pred = {'depth': depth}
             if self.pre_cropped:
@@ -79,8 +94,8 @@ class NYUv2Evaluation:
         return preds
 
     def compute_metrics(self, data, pred):
-        p = pred['depth_cropped'].squeeze()
-        d = data['depth_cropped'].squeeze()
+        p = pred['depth_cropped'].cpu().squeeze()
+        d = data['depth_cropped'].cpu().squeeze()
         m = torch.ones_like(d)
         metrics = get_depth_metrics(p, d, m)
         return metrics
@@ -103,7 +118,7 @@ if __name__ == '__main__':
           f"{ex.configs['NYUv2Evaluation']['model']} mode.")
     preds = evaluator.evaluate()
     summary = summarize([p['metrics'] for p in preds])
-    depth_preds_cropped = np.stack([p['depth_cropped'].squeeze() for p in preds], axis=0)
+    depth_preds_cropped = np.stack([p['depth_cropped'].cpu().squeeze() for p in preds], axis=0)
     config = cfg()
     model_name = config['model']
     mde_name = ex.configs['MDE']['mde']

@@ -20,4 +20,5 @@ dependencies:
   - pip
   - pip:
       - opencv-python
-      - tensorflow<1.14
+      - tensorflow=1.15
+      # - tensorflow-gpu=1.15  # Uncomment for gpu support in tensorflow

@@ -9,18 +9,24 @@ import configargparse
 from .densedepth_backend.model import create_model
 from .densedepth_backend.utils import scale_up, predict
 
-from ..experiment import ex
+from core.experiment import ex
 
 @ex.config('DenseDepth')
 def cfg():
     backend = Path(__file__).parent/'densedepth_backend'
     parser = configargparse.ArgParser(default_config_files=[str(backend/'densedepth.cfg')])
     parser.add('--densedepth-weights', default=str(backend/'nyu.h5'))
+    parser.add('--gpu', type=str)
     config, _ = parser.parse_known_args()
     return vars(config)
 
 @ex.setup('DenseDepth')
 def setup(config):
+    if config['gpu'] is not None and torch.cuda.is_available():
+        os.environ['CUDA_VISIBLE_DEVICES'] = config['gpu']
+        print(f"Using gpu {config['gpu']} (CUDA_VISIBLE_DEVICES = {os.environ['CUDA_VISIBLE_DEVICES']}).")
+    else:
+        print("Using cpu.")
     return DenseDepth(weights_file=config['densedepth_weights'])
 
 @ex.entity

@@ -4,23 +4,9 @@ from scipy.signal import fftconvolve
 import configargparse
 from pathlib import Path
 
-parser = configargparse.ArgParser(default_config_files=[str(Path(__file__).parent/'spad.cfg')])
-parser.add('split', type=str)
-parser.add('-c', is_config_file=True)
-parser.add('--n-bins', type=int, required=True)
-parser.add('--min-depth', type=float, required=True)
-parser.add('--max-depth', type=float, required=True)
-parser.add('--laser-fwhm-ps', type=float, required=True)
-parser.add('--signal-count', type=float, required=True)
-parser.add('--sbr', type=float, nargs='+', required=True)
-parser.add('--output-dir', required=True)
-parser.add('--seed', type=int)
-
-
 def rgb2gray(img):
     """Requires (N)HWC tensor"""
     return 0.2989 * img[..., 0] + 0.5870 * img[..., 1] + 0.1140 * img[..., 2]
-
 
 class SingleSPADWithLaser:
     def __init__(self, n_bins, min_depth, max_depth, laser_fwhm_ps, seed=0):
@@ -90,12 +76,25 @@ if __name__ == "__main__":
     from tqdm import tqdm
     from pathlib import Path
     from pdb import set_trace
+    nyuv2_dir = Path(__file__).parent/'data'/'nyu_depth_v2'
+    parser = configargparse.ArgParser(default_config_files=[str(nyuv2_dir/'spad.cfg')])
+    parser.add('split', type=str)
+    parser.add('-c', is_config_file=True)
+    parser.add('--n-bins', type=int, required=True)
+    parser.add('--min-depth', type=float, required=True)
+    parser.add('--max-depth', type=float, required=True)
+    parser.add('--laser-fwhm-ps', type=float, required=True)
+    parser.add('--signal-count', type=float, required=True)
+    parser.add('--sbr', type=float, nargs='+', required=True)
+    parser.add('--seed', type=int)
     args = parser.parse_args()
     spad = SingleSPADWithLaser(args.n_bins, args.min_depth,
                                args.max_depth, args.laser_fwhm_ps)
-    # Load a sample depth map
-    from nyuv2_dataset import get_dataloader, crop_image_and_depth
-    dataloader = get_dataloader(args.split, transform=crop_image_and_depth)
+    # Load the dataset
+    from torch.utils.data import DataLoader
+    from data.nyu_depth_v2.nyuv2_dataset import NYUDepthv2, crop_image_and_depth
+    dataset = NYUDepthv2(split=args.split, transform=crop_image_and_depth)
+    dataloader = DataLoader(dataset, batch_size=1)
     out = {}
     for sbr in args.sbr:
         print(f"Simulating with SBR = {sbr}")
@@ -110,5 +109,6 @@ if __name__ == "__main__":
                                 sbr=sbr)
             all_counts[i, :] = counts
         out[str(sbr)] = all_counts
-    output_path = Path(args.output_dir)/f"counts_{args.split}.npz"
+        out['seed'] = spad.seed
+    output_path = nyuv2_dir/'processed'/f'counts_{args.split}.npz'
     np.savez(output_path, **out)

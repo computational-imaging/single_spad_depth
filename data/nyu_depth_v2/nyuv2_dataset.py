@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 import torchvision.transforms.functional as F
 from pathlib import Path
 
-from ...experiment import ex
+from core.experiment import ex
 
 SPLIT_FILES = {
     'train': Path(__file__).parent/"processed"/"nyuv2_train.npz",

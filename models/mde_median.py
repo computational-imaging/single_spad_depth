@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import torch
 import numpy as np
 import configargparse
 from pathlib import Path
@@ -8,8 +9,8 @@ from pdb import set_trace
 # MDEs
 from .mde import MDE
 
-from ..data.nyu_depth_v2.nyuv2_dataset import NYUV2_CROP
-from ..experiment import ex
+from data.nyu_depth_v2.nyuv2_dataset import NYUV2_CROP
+from core.experiment import ex
 
 
 @ex.config('MDEMedian')
@@ -35,12 +36,14 @@ class MDEMedian:
         init = self.mde_model(data)
         if self.crop is not None:
             # Set median based on crop (makes a big difference)
-            init_median = np.median(init[...,
-                                         self.crop[0]:self.crop[1],
-                                         self.crop[2]:self.crop[3]])
+            init_median = torch.median(init[...,
+                                       self.crop[0]:self.crop[1],
+                                       self.crop[2]:self.crop[3]])
         else:
-            init_median = np.median(init)
-        pred = init * (np.median(data[self.gt_key])/init_median)
+            init_median = torch.median(init)
+        init_median = init_median.to(data[self.gt_key].device)
+        init = init.to(data[self.gt_key].device)
+        pred = init * (torch.median(data[self.gt_key])/init_median)
         return pred
 
 if __name__ == '__main__':

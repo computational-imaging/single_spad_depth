@@ -9,14 +9,14 @@ import numpy as np
 import skimage.io as sio
 from pathlib import Path
 
-HERE = Path(os.path.dirname(__file__))
+nyuv2_dir = Path(__file__).parent/'data'/'nyu_depth_v2'
 parser = ArgumentParser()
 parser.add_argument('--main-file',
-                    default=HERE/"raw"/"nyu_depth_v2_labeled.mat")
+                    default=nyuv2_dir/'raw'/'nyu_depth_v2_labeled.mat')
 parser.add_argument('--split-file',
-                    default=HERE/"raw"/"splits.mat")
+                    default=nyuv2_dir/'raw'/'splits.mat')
 parser.add_argument('--output-dir',
-                    default=HERE)
+                    default=nyuv2_dir/'processed')
 
 
 if __name__ == '__main__':

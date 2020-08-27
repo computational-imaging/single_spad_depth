@@ -7,11 +7,11 @@ from pathlib import Path
 from pdb import set_trace
 
 # MDEs
-from .dorn import DORN
-from .densedepth import DenseDepth
-from .midas import MiDaS
+from models.dorn import DORN
+from models.densedepth import DenseDepth
+from models.midas import MiDaS
 
-from ..experiment import ex
+from core.experiment import ex
 
 @ex.config('MDE')
 def cfg():
@@ -61,7 +61,7 @@ class MDE:
         if self.in_order == 'nhwc':
             img = img.permute(0, 2, 3, 1)
         if self.in_type == 'numpy':
-            img = img.numpy()
+            img = img.cpu().numpy()
         out = self.mde(img)
         if self.out_type == 'numpy':
             out = torch.from_numpy(out)
