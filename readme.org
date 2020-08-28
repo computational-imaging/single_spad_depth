@@ -44,32 +44,30 @@ Each should be placed in the relevant =*_backend= folder in the =models= directo
 The basic pattern is to run the command
 #+BEGIN_SRC sh
 python eval_nyuv2.py \
-[--eval-config method.yml] \
-[--mde-config single_spad_depth/models/<mde.cfg>] \
-[--mde-transient-config single_spad_depth/models/<mde_transient.cfg>]
+[-c configs/<MDE>/<method.yml>]
 [--sbr SBR]
 [--gpu GPU]
 #+END_SRC
+MDE can be DORN, DenseDepth, or MiDaS.
 method.yml can take on the following values:
-- =mde.yml= to run the MDE alone (default)
-- =median.yml= for median matching
+- =mde.yml= to run the MDE alone (default) - DORN and DenseDepth only.
+- =median.yml= for median matching - DORN and DenseDepth only.
 - =gt_hist.yml= for ground truth histogram matching
 - =transient.yml= for transient matching, note that the =--sbr= option will need
   to be set if this is used.
-mde.cfg selects the monocular depth estimator and can be one of
-- =dorn_mde.cfg= (default)
-- =densedepth_mde.cfg=
-- =midas_mde.cfg=
-For running transient matching, additionally specify mde_transient.cfg to be one
-of
-- =dorn_transient.cfg=
-- =densedepth_transient.cfg=
-- =midas_transient.cfg=
-according to which model is being used. This sets further model-specific
-parameters necessary for our method.
 For running on GPU, use the =--gpu= argument with number indicating which one to
 use.
-
-An example command is given in =example.sh=
+Also provided are three shell scripts, =run_all_<method>.sh= which will run all
+the MDEs on the given method.
+*** Results
+Results are automatically saved to
+=results/<method>/<mde>/[<sbr>]/[summary.npy|preds_cropped.npy]= files.
+=summary.npy= is a dictionary of aggregate metrics and can be loaded using
+#+BEGIN_SRC python
+import numpy as np
+d = np.load('summary.npy', allow_pickle=True)[()]
+#+END_SRC
+=preds_cropped.npy= contains an N by 440 by 592 numpy array containing the final depth
+estimates on the official NYUv2 center crop of each image.
 ** Running on Captured Data
 TODO

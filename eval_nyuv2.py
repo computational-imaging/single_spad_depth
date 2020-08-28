@@ -125,11 +125,11 @@ if __name__ == '__main__':
     summary = summarize([p['metrics'] for p in preds])
     depth_preds_cropped = np.stack([p['depth_cropped'].cpu().squeeze() for p in preds], axis=0)
     config = cfg()
-    model_name = config['model']
-    mde_name = ex.config['MDE']['mde']
-    output_dir = Path(config['output_dir'])/f'{model_name}'/f'{mde_name}'
-    if config['dataset'] == 'transient':
-        output_dir = output_dir/f'sbr_{config["sbr"]}'
+    method_name = ex.config['method']
+    mde_name = ex.config['mde']
+    output_dir = Path(ex.config['output_dir'])/f'{method_name}'/f'{mde_name}'
+    if ex.config['method'] == 'transient':
+        output_dir = output_dir/f'sbr_{ex.config["sbr"]}'
     output_dir.mkdir(parents=True, exist_ok=True)
     np.save(output_dir/'summary', summary)
     np.save(output_dir/'preds_cropped', depth_preds_cropped)
