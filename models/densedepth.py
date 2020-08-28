@@ -11,14 +11,15 @@ from .densedepth_backend.utils import scale_up, predict
 
 from core.experiment import ex
 
-@ex.config('DenseDepth')
+@ex.add_arguments
 def cfg():
     backend = Path(__file__).parent/'densedepth_backend'
-    parser = configargparse.ArgParser(default_config_files=[str(backend/'densedepth.cfg')])
-    parser.add('--densedepth-weights', default=str(backend/'nyu.h5'))
-    parser.add('--gpu', type=str)
-    config, _ = parser.parse_known_args()
-    return vars(config)
+    parser = configargparse.get_argument_parser()
+    group = parser.add_argument_group('DenseDepth', 'DenseDepth-specific params.')
+    group.add('--densedepth-path', default=str(backend/'nyu.h5'))
+    group.add('--gpu', type=str)
+    # config, _ = parser.parse_known_args()
+    # return vars(config)
 
 @ex.setup('DenseDepth')
 def setup(config):
@@ -27,7 +28,7 @@ def setup(config):
         print(f"Using gpu {config['gpu']} (CUDA_VISIBLE_DEVICES = {os.environ['CUDA_VISIBLE_DEVICES']}).")
     else:
         print("Using cpu.")
-    return DenseDepth(weights_file=config['densedepth_weights'])
+    return DenseDepth(weights_file=config['densedepth_path'])
 
 @ex.entity
 class DenseDepth:

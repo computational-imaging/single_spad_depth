@@ -10,26 +10,26 @@ from data.nyu_depth_v2.nyuv2_dataset import NYUV2_CROP
 
 from core.experiment import ex
 
-@ex.config('MDETransient')
+@ex.add_arguments
 def cfg():
-    parser = configargparse.ArgParser(default_config_files=[str(Path(__file__).parent/'dorn_transient.cfg')])
-    parser.add('--mde-transient-config', is_config_file=True)
-    parser.add('--refl-est', choices=['gray', 'red'], required=True)
-    parser.add('--source-n-sid-bins', type=int, default=68)
-    parser.add('--n-ambient-bins', type=int, default=60)
-    parser.add('--edge-coeff', type=float, default=5.)
-    parser.add('--n-std', type=int, default=1)
-    parser.add('--min-depth', type=float, default=0.)
-    parser.add('--max-depth', type=float, default=10.)
-    parser.add('--source-alpha', type=float, default=0.6569154266167957)
-    parser.add('--source-beta', type=float, default=9.972175646365525)
-    parser.add('--source-offset', type=float, default=0.)
-    args, _ = parser.parse_known_args()
-    return vars(args)
+    parser = configargparse.get_argument_parser()
+    group = parser.add_argument_group('MDETransient', 'MDE+Transient params.')
+    group.add('--refl-est', choices=['gray', 'red'], default='gray')
+    group.add('--source-n-sid-bins', type=int, default=68)
+    group.add('--n-ambient-bins', type=int, default=60)
+    group.add('--edge-coeff', type=float, default=5.)
+    group.add('--n-std', type=int, default=1)
+    group.add('--min-depth', type=float, default=0.)
+    group.add('--max-depth', type=float, default=10.)
+    group.add('--source-alpha', type=float, default=0.6569154266167957)
+    group.add('--source-beta', type=float, default=9.972175646365525)
+    group.add('--source-offset', type=float, default=0.)
+    # args, _ = parser.parse_known_args()
+    # return vars(args)
 
-@ex.setup('MDETransient')
+@ex.setup('transient')
 def setup(config):
-    mde_model = ex.get_and_configure('MDE')
+    mde_model = ex.get_and_configure('mde')
     preproc = TransientPreprocessor(config['source_n_sid_bins'],
                                     config['n_ambient_bins'],
                                     config['edge_coeff'],

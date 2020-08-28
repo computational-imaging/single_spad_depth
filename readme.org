@@ -36,9 +36,9 @@ python simulate_single_spad.py test
 TODO
 *** Model Weights
 DORN, DenseDepth, and MiDaS weights can be downloaded at the following links:
-- DORN: =https://drive.google.com/uc?export=download&id=1WPD2mf2wSvPwisaeeEDvzyxkAekj_rxR=
-- DenseDepth: =https://drive.google.com/uc?export=download&id=1Ua73crX4X8ma4h-MEIF9C1gXLmWOt8Yn
-- MiDaS: =https://drive.google.com/uc?export=download&id=
+- [[https://drive.google.com/uc?export=download&id=1WPD2mf2wSvPwisaeeEDvzyxkAekj_rxR][DORN]]
+- [[https://drive.google.com/uc?export=download&id=1Ua73crX4X8ma4h-MEIF9C1gXLmWOt8Yn][DenseDepth]]
+- [[https://drive.google.com/uc?export=download&id=1ug1z2zmZA-ZTtOz8m7d_cDIbgu8FuRhi][MiDaS]]
 Each should be placed in the relevant =*_backend= folder in the =models= directory.
 ** Running on NYU Depth v2
 The basic pattern is to run the command

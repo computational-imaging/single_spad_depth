@@ -12,17 +12,18 @@ from .mde import MDE
 from data.nyu_depth_v2.nyuv2_dataset import NYUV2_CROP
 from core.experiment import ex
 
-@ex.config('MDEGTHist')
+@ex.add_arguments
 def cfg():
-    parser = configargparse.ArgParser(default_config_files=[str(Path(__file__).parent/'mde_gt_hist.cfg')])
-    parser.add('--gt-key', required=True)
-    args, _ = parser.parse_known_args()
-    return vars(args)
+    parser = configargparse.get_argument_parser()
+    group = parser.add_argument_group('MDEGTHist', 'MDE+GT Hist matching params.')
+    group.add('--gt-hist-gt-key', default='depth_cropped')
+    # args, _ = parser.parse_known_args()
+    # return vars(args)
 
-@ex.setup('MDEGTHist')
+@ex.setup('gt_hist')
 def setup(config):
-    mde_model = ex.get_and_configure('MDE')
-    return MDEGTHist(mde_model, config['gt_key'])
+    mde_model = ex.get_and_configure('mde')
+    return MDEGTHist(mde_model, config['gt_hist_gt_key'])
 
 @ex.entity
 class MDEGTHist:

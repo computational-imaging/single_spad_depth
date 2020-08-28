@@ -136,10 +136,10 @@ def resize_image(img):
 
     img_resized = cv2.resize(img, (width, height), interpolation=cv2.INTER_AREA)
 
-    img_resized = (
-        torch.from_numpy(np.transpose(img_resized, (2, 0, 1))).contiguous().float()
-    )
-    img_resized = img_resized.unsqueeze(0)
+    # img_resized = (
+        # torch.from_numpy(np.transpose(img_resized, (2, 0, 1))).contiguous().float()
+    # )
+    # img_resized = img_resized.unsqueeze(0)
 
     return img_resized
 

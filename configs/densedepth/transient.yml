@@ -1,0 +1,15 @@
+method: transient
+split: test
+mde: DenseDepth
+img-key: image
+in-type: numpy
+in-order: nhwc
+out-type: numpy
+out-order: nhwc
+transform:
+  - crop_image_and_depth
+  - to_tensor
+pre-cropped: True
+
+refl-est: gray
+source-n-sid-bins: 140

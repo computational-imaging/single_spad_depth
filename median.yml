@@ -1,6 +1,7 @@
+method: median
 dataset: normal
 split: test
-model: MDEMedian
+mde: DORN
 transform:
   - crop_image_and_depth
   - dorn_preprocess

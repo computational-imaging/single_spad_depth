@@ -6,10 +6,10 @@ logger = logging.getLogger('experiment')
 logger.setLevel(logging.INFO)
 
 class Experiment:
-    def __init__(self, name, entities=None, configs=None, setups=None, transforms=None):
+    def __init__(self, name, entities=None, config=None, setups=None, transforms=None):
         self.name = name
         self.entities = {} if entities is None else entities
-        self.configs = {} if configs is None else configs
+        self.config = {} if config is None else config
         self.transforms = {} if transforms is None else transforms
         self.setups = {} if setups is None else setups
 
@@ -27,12 +27,9 @@ class Experiment:
             self.entities[_obj.__name__] = _obj
             return _obj
 
-    def config(self, name):
-        def config_register(cfg_fn):
-            cfg = cfg_fn()
-            self.configs[name] = cfg
-            return cfg_fn
-        return config_register
+    def add_arguments(self, _fn):
+        _fn()
+        return _fn
 
     def setup(self, name):
         def setup_register(setup_fn):
@@ -48,8 +45,7 @@ class Experiment:
 
     def get_and_configure(self, name):
         setup_fn = self.setups[name]
-        config = self.configs[name]
-        return setup_fn(config)
+        return setup_fn(self.config)
 
     def merge(self, d1, d2, other=""):
         intersect = d1.keys() & d2.keys()
@@ -60,7 +56,7 @@ class Experiment:
 
     def __add__(self, exp):
         self.entities = self.merge(self.entities, exp.entities, other=exp.name)
-        self.configs = self.merge(self.configs, exp.configs, other=exp.name)
+        self.config = self.merge(self.config, exp.config, other=exp.name)
         self.transforms = self.merge(self.transforms, exp.transforms, other=exp.name)
         return self
 
@@ -68,15 +64,15 @@ class Experiment:
 ex = Experiment('base')
 
 def test_experiment():
-    ex = Experiment('test', configs={'entity1': {'a': 1, 'b': 2}})
+    ex = Experiment('test', config={'entity1': {'a': 1, 'b': 2}})
     @ex.config('new')
     def cfg():
         return {'b': 4, 'c': 2}
-    print(ex.configs)
+    print(ex.config)
 
-    ex2 = Experiment('test2', configs={'entity1': {'a': 3, 'c': 4}})
+    ex2 = Experiment('test2', config={'entity1': {'a': 3, 'c': 4}})
     ex += ex2
-    print(ex.configs)
+    print(ex.config)
 
 def test_entity_registration():
     ex = Experiment('test')

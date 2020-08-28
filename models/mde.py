@@ -13,22 +13,40 @@ from models.midas import MiDaS
 
 from core.experiment import ex
 
-@ex.config('MDE')
+@ex.add_arguments
 def cfg():
-    parser = configargparse.ArgParser(default_config_files=[str(Path(__file__).parent/'dorn_mde.cfg')])
-    parser.add('--mde-config', is_config_file=True)
-    parser.add('--mde', choices = ['DORN', 'DenseDepth', 'MiDaS'], required=True)
-    parser.add('--img-key', required=True, default='image', help='Key in data corresponding to image')
-    parser.add('--in-type', choices=['torch', 'numpy'], required=True, default='torch')
-    parser.add('--in-order', choices=['nchw', 'nhwc'], required=True, default='nchw')
-    parser.add('--out-type', choices=['torch', 'numpy'], required=True, default='torch')
-    parser.add('--out-order', choices=['nchw', 'nhwc'], required=True, default='nchw')
-    args, _ = parser.parse_known_args()
-    return vars(args)
+    parser = configargparse.get_argument_parser()
+    group = parser.add_argument_group('MDE', 'MDE Wrapper config')
+    group.add('--mde', choices = ['DORN', 'DenseDepth', 'MiDaS'], default='DORN')
+    group.add('--img-key', default='dorn_image', help='Key in data corresponding to image')
+    group.add('--in-type', choices=['torch', 'numpy'], default='torch')
+    group.add('--in-order', choices=['nchw', 'nhwc'], default='nchw')
+    group.add('--out-type', choices=['torch', 'numpy'], default='torch')
+    group.add('--out-order', choices=['nchw', 'nhwc'], default='nchw')
+    # args, _ = parser.parse_known_args()
+    # return vars(args)
 
-@ex.setup('MDE')
+@ex.setup('mde')
 def setup(config):
     mde = ex.get_and_configure(config['mde'])
+    # if mde == 'DORN':
+    #     img_key = 'dorn_image'
+    #     in_type = 'torch'
+    #     in_order = 'nchw'
+    #     out_type = 'torch'
+    #     out_order = 'nchw'
+    # elif mde == 'DenseDepth':
+    #     img_key = 'image'
+    #     in_type = 'numpy'
+    #     in_order = 'nhwc'
+    #     out_type = 'numpy'
+    #     out_order = 'nhwc'
+    # elif mde == 'MiDaS':
+    #     img_key = 'midas_image'
+    #     in_type = 'torch'
+    #     in_order = 'nhwc'
+    #     out_type = 'numpy'
+    #     out_order = 'nhwc'
     return MDE(mde,
                key=config['img_key'],
                in_type=config['in_type'],

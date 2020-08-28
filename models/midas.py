@@ -11,20 +11,25 @@ import os
 
 from core.experiment import ex
 
-@ex.config('MiDaS')
+@ex.add_arguments
 def cfg():
     backend = Path(__file__).parent/'midas_backend'
-    parser = configargparse.ArgParser(default_config_files=[str(backend/'midas.cfg')])
-    parser.add('--midas-path', default=str(backend/'model.pt'))
-    parser.add('--midas-min-depth', type=float, default=0.1)
-    parser.add('--midas-max-depth', type=float, default=10.)
-    parser.add('--gpu', type=str)
-    args, _ = parser.parse_known_args()
-    return vars(args)
+    parser = configargparse.get_argument_parser()
+    group = parser.add_argument_group('MiDaS', 'MiDaS-specific params.')
+    group.add('--midas-path', default=str(backend/'model.pt'))
+    group.add('--midas-full-width', type=int, default=480)
+    group.add('--midas-full-height', type=int, default=640)
+    group.add('--midas-min-depth', type=float, default=0.1)
+    group.add('--midas-max-depth', type=float, default=10.)
+    group.add('--gpu', type=str)
+    # args, _ = parser.parse_known_args()
+    # return vars(args)
 
 @ex.setup('MiDaS')
 def setup(config):
     midas = MiDaS(model_path=config['midas_path'],
+                  full_width=config['midas_full_width'],
+                  full_height=config['midas_full_height'],
                   min_depth=config['midas_min_depth'],
                   max_depth=config['midas_max_depth'])
     if config['gpu'] is not None and torch.cuda.is_available():
@@ -36,11 +41,19 @@ def setup(config):
         print("Using cpu.")
     return midas
 
+@ex.transform('midas_preprocess')
+def midas_preprocess(data):
+    """data['image'] is HWC"""
+    data['midas_image'] = resize_image(data['image'])
+    return data
+
+
 @ex.entity
 class MiDaS:
-    def __init__(self, model_path, min_depth, max_depth, device='cpu'):
+    def __init__(self, model_path, full_width, full_height, min_depth, max_depth, device='cpu'):
         self.model = MonoDepthNet(model_path)
         self.model.eval()
+        self.full_shape = (full_height, full_width)
         self.depth_range = (min_depth, max_depth)
         self.device = device
 
@@ -53,16 +66,12 @@ class MiDaS:
         :param device: torch.device object to run on
         :return: Inverse Depth image, same size as RGB image, scaled to be in the output range.
         """
-        img = image.squeeze()
         depth_range = self.depth_range
-        img_input = resize_image(img)
-        img_input = img_input.to(self.device)
-        # compute
 
         with torch.no_grad():
-            idepth = self.model(img_input)
+            idepth = self.model(image)
 
-        idepth = resize_depth(idepth, img.shape[1], img.shape[0])
+        idepth = resize_depth(idepth, self.full_shape[0], self.full_shape[1])
 
         idepth_min = idepth.min()
         idepth_max = idepth.max()

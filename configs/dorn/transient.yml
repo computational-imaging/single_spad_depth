@@ -1,7 +1,10 @@
-method: mde
+method: transient
 split: test
 mde: DORN
 transform:
   - crop_image_and_depth
   - dorn_preprocess
   - to_tensor
+pre-cropped: True
+
+refl-est: gray

@@ -13,17 +13,18 @@ from data.nyu_depth_v2.nyuv2_dataset import NYUV2_CROP
 from core.experiment import ex
 
 
-@ex.config('MDEMedian')
+@ex.add_arguments
 def cfg():
-    parser = configargparse.ArgParser(default_config_files=[str(Path(__file__).parent/'mde_median.cfg')])
-    parser.add('--gt-key', default='depth_cropped')
-    args, _ = parser.parse_known_args()
-    return vars(args)
+    parser = configargparse.get_argument_parser()
+    group = parser.add_argument_group('MDEMedian', 'MDE+Median method params.')
+    group.add('--median-gt-key', default='depth_cropped')
+    # args, _ = parser.parse_known_args()
+    # return vars(args)
 
-@ex.setup('MDEMedian')
+@ex.setup('median')
 def setup(config):
-    mde_model = ex.get_and_configure('MDE')
-    return MDEMedian(mde_model, gt_key=config['gt_key'])
+    mde_model = ex.get_and_configure('mde')
+    return MDEMedian(mde_model, gt_key=config['median_gt_key'])
 
 @ex.entity
 class MDEMedian:

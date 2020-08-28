@@ -1,0 +1,13 @@
+method: gt_hist
+split: test
+mde: DenseDepth
+img-key: image
+in-type: numpy
+in-order: nhwc
+out-type: numpy
+out-order: nhwc
+transform:
+  - crop_image_and_depth
+  - to_tensor
+pre-cropped: True
+gt-hist-gt-key: depth_cropped

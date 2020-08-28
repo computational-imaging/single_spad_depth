@@ -1,0 +1,14 @@
+method: gt_hist
+split: test
+mde: MiDaS
+img-key: midas_image
+in-type: torch
+in-order: nchw
+out-type: numpy
+out-order: nhwc
+transform:
+  - crop_image_and_depth
+  - midas_preprocess
+  - to_tensor
+pre-cropped: True
+gt-hist-gt-key: depth_cropped

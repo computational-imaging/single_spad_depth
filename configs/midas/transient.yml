@@ -1,0 +1,18 @@
+method: transient
+split: test
+mde: MiDaS
+img-key: midas_image
+in-type: torch
+in-order: nchw
+out-type: numpy
+out-order: nhwc
+transform:
+  - crop_image_and_depth
+  - midas_preprocess
+  - to_tensor
+pre-cropped: True
+
+refl-est: gray
+source-n-sid-bins: 140
+source-alpha: 0.1
+source-beta: 10

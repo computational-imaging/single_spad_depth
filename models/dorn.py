@@ -16,38 +16,38 @@ from core.experiment import ex
 
 def main():
     model = ex.entities['DORN']
-    config = ex.configs['DORN']
-    mde = model(**config)
+    config = ex.configs
     set_trace()
 
-@ex.config("DORN")
+@ex.add_arguments
 def cfg():
-    backend = Path(__file__).parent/"dorn_backend"
-    parser = configargparse.ArgParser(default_config_files=[str(backend/'dorn.cfg')])
-    parser.add('--in-channels', type=int, default=3)
-    parser.add('--in-height', type=int, default=257)
-    parser.add('--in-width', type=int, default=353)
-    parser.add('--full-height', type=int, default=480)
-    parser.add('--full-width', type=int, default=640)
-    parser.add('--sid-bins', type=int, default=68)
-    parser.add('--offset', type=float, default=0.)
-    parser.add('--min-depth', type=float, default=0.)
-    parser.add('--max-depth', type=float, default=10.)
-    parser.add('--alpha', type=float, default=0.6569154266167957)
-    parser.add('--beta', type=float, default=9.972175646365525)
-    parser.add('--frozen', type=bool, default=True)
-    parser.add('--state-dict-file', default=backend/"dorn_nyuv2_rgb.pth")
-    parser.add('--gpu', type=str)
-    config, _ = parser.parse_known_args()
-    return vars(config)
+    backend = Path(__file__).parent/'dorn_backend'
+    parser = configargparse.get_argument_parser()
+    group = parser.add_argument_group('DORN', 'DORN-specific params.')
+    group.add('--in-channels', type=int, default=3)
+    group.add('--in-height', type=int, default=257)
+    group.add('--in-width', type=int, default=353)
+    group.add('--dorn-full-height', type=int, default=480)
+    group.add('--dorn-full-width', type=int, default=640)
+    group.add('--sid-bins', type=int, default=68)
+    group.add('--offset', type=float, default=0.)
+    group.add('--min-depth', type=float, default=0.)
+    group.add('--max-depth', type=float, default=10.)
+    group.add('--alpha', type=float, default=0.6569154266167957)
+    group.add('--beta', type=float, default=9.972175646365525)
+    group.add('--frozen', type=bool, default=True)
+    group.add('--state-dict-file', default=backend/"dorn_nyuv2_rgb.pth")
+    group.add('--gpu', type=str)
+    # config, _ = parser.parse_known_args()
+    # return vars(config)
 
 @ex.setup('DORN')
 def setup(config):
     dorn = DORN(in_channels=config['in_channels'],
                 in_height=config['in_height'],
                 in_width=config['in_width'],
-                full_height=config['full_height'],
-                full_width=config['full_width'],
+                full_height=config['dorn_full_height'],
+                full_width=config['dorn_full_width'],
                 sid_bins=config['sid_bins'],
                 offset=config['offset'],
                 min_depth=config['min_depth'],
@@ -129,7 +129,6 @@ class SIDTorch:
 def preprocess(data):
     """Convert numpy HWC images"""
     # Resize RGB
-    # set_trace()
     image = cv2.resize(data['image'].astype(np.float32), (353, 257), cv2.INTER_LINEAR)
     # Subtract mean
     mean = np.array([[[123.1516, 115.9029, 103.0626]]]).astype(np.float32)

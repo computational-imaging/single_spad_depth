@@ -4,7 +4,11 @@ import numpy as np
 import torch
 from torchvision.transforms import Compose
 from torch.utils.data import DataLoader
+# Initialize singleton parser
 import configargparse
+configargparse.get_argument_parser(
+    config_file_parser_class=configargparse.YAMLConfigFileParser,
+    add_help=True)
 from pdb import set_trace
 from tqdm import tqdm
 from pathlib import Path
@@ -22,27 +26,27 @@ from data.nyu_depth_v2.nyuv2_dataset import NYUDepthv2, NYUDepthv2Transient, NYU
 
 from core.experiment import ex
 
-@ex.config('NYUv2Evaluation')
+@ex.add_arguments
 def cfg():
-    parser = configargparse.ArgParser(default_config_files=[str(Path(__file__).parent/'mde.yml')],
-                                      config_file_parser_class=configargparse.YAMLConfigFileParser)
-    parser.add('--eval-config', is_config_file=True)
-    parser.add('--model', required=True, help="Model to evaluate.")
-    parser.add('--dataset', choices=['normal', 'transient'], help='Which dataset to use.')
-    parser.add('--sbr', type=float, help='sbr for transient')
-    parser.add('--split', choices=['train', 'test'], required=True)
-    parser.add('--transform', action='append')
-    parser.add('--pre-cropped', action='store_true',
-               help="True if the method being evaluated already outputs cropped depth images.")
-    parser.add('--output-dir', default=str(Path(__file__).parent/'results'))
-    parser.add('--gpu', type=str)
-    config, _ = parser.parse_known_args()
-    return vars(config)
+    parser = configargparse.get_argument_parser()
+    group = parser.add_argument_group('eval_nyuv2', 'evaluation params.')
+    group.add('-c', is_config_file=True)
+    group.add('--method', choices=['mde', 'median', 'gt_hist', 'transient'],
+               default='mde', help="Method to evaluate.")
+    group.add('--sbr', type=float, help='sbr for transient method')
+    group.add('--split', choices=['train', 'test'], default='test')
+    group.add('--transform', action='append')
+    group.add('--pre-cropped', action='store_true',
+               help="True if the model being evaluated already outputs cropped depth images.")
+    group.add('--output-dir', default=str(Path(__file__).parent/'results'))
+    group.add('--gpu', type=str)
+    # config, _ = parser.parse_known_args()
+    # return vars(config)
 
 @ex.setup('NYUv2Evaluation')
 def setup(config):
-    model = ex.get_and_configure(config['model'])
-    if config['dataset'] == 'normal':
+    model = ex.get_and_configure(config['method'])
+    if config['method'] in ['mde', 'median', 'gt_hist']:
         dataset = NYUDepthv2(split=config['split'])
     else:
         dataset = NYUDepthv2Transient(split=config['split'], sbr=config['sbr'])
@@ -110,18 +114,19 @@ def summarize(all_metric_dicts):
         summary[k] = np.mean([metric_dict[k] for metric_dict in all_metric_dicts])
     return summary
 
-
-
 if __name__ == '__main__':
+    parser = configargparse.get_arg_parser()
+    ex.config = vars(parser.parse_args())
     evaluator = ex.get_and_configure('NYUv2Evaluation')
-    print(f"Evaluating {ex.configs['MDE']['mde']} in " + \
-          f"{ex.configs['NYUv2Evaluation']['model']} mode.")
+    # set_trace()
+    print(f"Evaluating {ex.config['mde']} in " + \
+          f"{ex.config['method']} mode.")
     preds = evaluator.evaluate()
     summary = summarize([p['metrics'] for p in preds])
     depth_preds_cropped = np.stack([p['depth_cropped'].cpu().squeeze() for p in preds], axis=0)
     config = cfg()
     model_name = config['model']
-    mde_name = ex.configs['MDE']['mde']
+    mde_name = ex.config['MDE']['mde']
     output_dir = Path(config['output_dir'])/f'{model_name}'/f'{mde_name}'
     if config['dataset'] == 'transient':
         output_dir = output_dir/f'sbr_{config["sbr"]}'
