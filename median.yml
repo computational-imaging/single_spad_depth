@@ -1,8 +1,0 @@
-method: median
-dataset: normal
-split: test
-mde: DORN
-transform:
-  - crop_image_and_depth
-  - dorn_preprocess
-  - to_tensor

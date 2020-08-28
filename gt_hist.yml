@@ -1,8 +1,0 @@
-dataset: normal
-split: test
-model: MDEGTHist
-pre-cropped: True
-transform:
-  - crop_image_and_depth
-  - dorn_preprocess
-  - to_tensor
