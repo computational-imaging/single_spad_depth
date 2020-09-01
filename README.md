@@ -2,13 +2,13 @@
 
 # Disambiguating Monocular Depth Estimation with a Single Transient
 
-1.  [Setup and Installation](#org0a6c051)
-2.  [Getting and Preprocessing the Data](#org4a31774)
-3.  [Running on NYU Depth v2](#orgddee6e2)
-4.  [Running on Captured Data](#org88960bd)
+1.  [Setup and Installation](#orgb153ad8)
+2.  [Getting and Preprocessing the Data](#orga3ff254)
+3.  [Running on NYU Depth v2](#org9a31e9c)
+4.  [Running on Captured Data](#orgcab9406)
 
 
-<a id="org0a6c051"></a>
+<a id="orgb153ad8"></a>
 
 ## Setup and Installation
 
@@ -26,7 +26,7 @@ the command
     conda activate spad-single
 
 
-<a id="org4a31774"></a>
+<a id="orga3ff254"></a>
 
 ## Getting and Preprocessing the Data
 
@@ -65,16 +65,16 @@ DORN, DenseDepth, and MiDaS weights can be downloaded at the following links:
 Each should be placed in the relevant `*_backend` folder in the `models` directory.
 
 
-<a id="orgddee6e2"></a>
+<a id="org9a31e9c"></a>
 
 ## Running on NYU Depth v2
 
 The basic pattern is to run the command
 
     python eval_nyuv2.py \
-    [-c configs/<MDE>/<method.yml>]
-    [--sbr SBR]
-    [--gpu GPU]
+      -c configs/<MDE>/<method.yml>
+      [--sbr SBR]
+      [--gpu GPU]
 
 MDE can be DORN, DenseDepth, or MiDaS.
 method.yml can take on the following values:
@@ -104,7 +104,7 @@ Results are automatically saved to
 estimates on the official NYUv2 center crop of each image.
 
 
-<a id="org88960bd"></a>
+<a id="orgcab9406"></a>
 
 ## Running on Captured Data
 

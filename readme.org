@@ -44,9 +44,9 @@ Each should be placed in the relevant =*_backend= folder in the =models= directo
 The basic pattern is to run the command
 #+BEGIN_SRC sh
 python eval_nyuv2.py \
-[-c configs/<MDE>/<method.yml>]
-[--sbr SBR]
-[--gpu GPU]
+  -c configs/<MDE>/<method.yml>
+  [--sbr SBR]
+  [--gpu GPU]
 #+END_SRC
 MDE can be DORN, DenseDepth, or MiDaS.
 method.yml can take on the following values:
