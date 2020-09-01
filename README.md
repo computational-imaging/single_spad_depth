@@ -2,13 +2,13 @@
 
 # Disambiguating Monocular Depth Estimation with a Single Transient
 
-1.  [Setup and Installation](#orgce76c9f)
-2.  [Getting and Preprocessing the Data](#org1a56cc0)
-3.  [Running on NYU Depth v2](#org9c6f553)
-4.  [Running on Captured Data](#org94f8924)
+1.  [Setup and Installation](#org0a6c051)
+2.  [Getting and Preprocessing the Data](#org4a31774)
+3.  [Running on NYU Depth v2](#orgddee6e2)
+4.  [Running on Captured Data](#org88960bd)
 
 
-<a id="orgce76c9f"></a>
+<a id="org0a6c051"></a>
 
 ## Setup and Installation
 
@@ -26,7 +26,7 @@ the command
     conda activate spad-single
 
 
-<a id="org1a56cc0"></a>
+<a id="org4a31774"></a>
 
 ## Getting and Preprocessing the Data
 
@@ -65,49 +65,46 @@ DORN, DenseDepth, and MiDaS weights can be downloaded at the following links:
 Each should be placed in the relevant `*_backend` folder in the `models` directory.
 
 
-<a id="org9c6f553"></a>
+<a id="orgddee6e2"></a>
 
 ## Running on NYU Depth v2
 
 The basic pattern is to run the command
 
     python eval_nyuv2.py \
-    [--eval-config method.yml] \
-    [--mde-config single_spad_depth/models/<mde.cfg>] \
-    [--mde-transient-config single_spad_depth/models/<mde_transient.cfg>]
+    [-c configs/<MDE>/<method.yml>]
     [--sbr SBR]
     [--gpu GPU]
 
+MDE can be DORN, DenseDepth, or MiDaS.
 method.yml can take on the following values:
 
--   `mde.yml` to run the MDE alone (default)
--   `median.yml` for median matching
+-   `mde.yml` to run the MDE alone (default) - DORN and DenseDepth only.
+-   `median.yml` for median matching - DORN and DenseDepth only.
 -   `gt_hist.yml` for ground truth histogram matching
 -   `transient.yml` for transient matching, note that the `--sbr` option will need
     to be set if this is used.
 
-mde.cfg selects the monocular depth estimator and can be one of
-
--   `dorn_mde.cfg` (default)
--   `densedepth_mde.cfg`
--   `midas_mde.cfg`
-
-For running transient matching, additionally specify mde<sub>transient.cfg</sub> to be one
-of
-
--   `dorn_transient.cfg`
--   `densedepth_transient.cfg`
--   `midas_transient.cfg`
-
-according to which model is being used. This sets further model-specific
-parameters necessary for our method.
 For running on GPU, use the `--gpu` argument with number indicating which one to
 use.
+Also provided are three shell scripts, `run_all_<method>.sh` which will run all
+the MDEs on the given method.
 
-An example command is given in `example.sh`
+
+### Results
+
+Results are automatically saved to
+`results/<method>/<mde>/[<sbr>]/[summary.npy|preds_cropped.npy]` files.
+`summary.npy` is a dictionary of aggregate metrics and can be loaded using
+
+    import numpy as np
+    d = np.load('summary.npy', allow_pickle=True)[()]
+
+`preds_cropped.npy` contains an N by 440 by 592 numpy array containing the final depth
+estimates on the official NYUv2 center crop of each image.
 
 
-<a id="org94f8924"></a>
+<a id="org88960bd"></a>
 
 ## Running on Captured Data
 
