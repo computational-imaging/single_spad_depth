@@ -18,12 +18,12 @@
 We recommend using anaconda and creating an environment via the following
 command.
 
-    conda create -f environment.yml
+    conda env create -f environment.yml
 
 This will create an environment called `spad-single` which can be activated via
 the command
 
-    conda activate spad-single
+    conda activate single-spad-depth
 
 
 <a id="orga3ff254"></a>
