@@ -19,7 +19,7 @@ def main():
     config = ex.configs
     set_trace()
 
-@ex.add_arguments
+@ex.add_arguments('DORN')
 def cfg():
     backend = Path(__file__).parent/'dorn_backend'
     parser = configargparse.get_argument_parser()
@@ -27,8 +27,8 @@ def cfg():
     group.add('--in-channels', type=int, default=3)
     group.add('--in-height', type=int, default=257)
     group.add('--in-width', type=int, default=353)
-    group.add('--dorn-full-height', type=int, default=480)
-    group.add('--dorn-full-width', type=int, default=640)
+    group.add('--full-height', type=int, default=480)
+    group.add('--full-width', type=int, default=640)
     group.add('--sid-bins', type=int, default=68)
     group.add('--offset', type=float, default=0.)
     group.add('--min-depth', type=float, default=0.)
@@ -46,8 +46,8 @@ def setup(config):
     dorn = DORN(in_channels=config['in_channels'],
                 in_height=config['in_height'],
                 in_width=config['in_width'],
-                full_height=config['dorn_full_height'],
-                full_width=config['dorn_full_width'],
+                full_height=config['full_height'],
+                full_width=config['full_width'],
                 sid_bins=config['sid_bins'],
                 offset=config['offset'],
                 min_depth=config['min_depth'],

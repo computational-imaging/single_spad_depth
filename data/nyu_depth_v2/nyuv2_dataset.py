@@ -6,6 +6,7 @@ from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 import torchvision.transforms.functional as F
 from pathlib import Path
+from pdb import set_trace
 
 from core.experiment import ex
 
@@ -86,8 +87,10 @@ def to_tensor(data):
     in [0, 1] as well.
     """
     for k, v in data.items():
-        if len(v.shape) >= 3:
+        if len(v.shape) >= 2:
             data[k] = F.to_tensor(v)
+        elif len(v.shape) > 0: # 1D array
+            data[k] = torch.from_numpy(v)
     return data
 
 

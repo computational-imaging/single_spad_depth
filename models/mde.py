@@ -11,9 +11,10 @@ from models.dorn import DORN
 from models.densedepth import DenseDepth
 from models.midas import MiDaS
 
+from core.metrics import get_depth_metrics
 from core.experiment import ex
 
-@ex.add_arguments
+@ex.add_arguments('mde')
 def cfg():
     parser = configargparse.get_argument_parser()
     group = parser.add_argument_group('MDE', 'MDE Wrapper config')

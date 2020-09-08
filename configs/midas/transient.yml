@@ -12,6 +12,9 @@ transform:
   - to_tensor
 pre-cropped: True
 
+min-depth: 0.1
+max-depth: 10
+
 refl-est: gray
 source-n-sid-bins: 140
 source-alpha: 0.1

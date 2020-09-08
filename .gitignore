@@ -20,3 +20,4 @@ htmlcov
 *.pkl
 
 paper
+**/.ipynb_checkpoints

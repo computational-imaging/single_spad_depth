@@ -26,7 +26,7 @@ from data.nyu_depth_v2.nyuv2_dataset import NYUDepthv2, NYUDepthv2Transient, NYU
 
 from core.experiment import ex
 
-@ex.add_arguments
+@ex.add_arguments('NYUv2Evaluation')
 def cfg():
     parser = configargparse.get_argument_parser()
     group = parser.add_argument_group('eval_nyuv2', 'evaluation params.')
@@ -115,8 +115,9 @@ def summarize(all_metric_dicts):
     return summary
 
 if __name__ == '__main__':
-    parser = configargparse.get_arg_parser()
-    ex.config = vars(parser.parse_args())
+    # parser = configargparse.get_arg_parser()
+    # ex.config = vars(parser.parse_args())
+    # set_trace()
     evaluator = ex.get_and_configure('NYUv2Evaluation')
     # set_trace()
     print(f"Evaluating {ex.config['mde']} in " + \

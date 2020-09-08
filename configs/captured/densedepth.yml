@@ -1,0 +1,9 @@
+mde: DenseDepth
+img-key: image
+in-type: numpy
+in-order: nhwc
+out-type: numpy
+out-order: nhwc
+
+transform:
+  - to_tensor

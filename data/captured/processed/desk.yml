@@ -1,0 +1,16 @@
+crop:
+- 0
+- 0
+- 0
+- 0
+full-height: 768
+full-width: 864
+max-depth: 8.908052761240572
+min-depth: 0.3040527612405734
+offset: 0.0
+radial: true
+refl-est: red
+scene: desk
+source-alpha: 0.3040527612405734
+source-beta: 8.908052761240572
+source-n-sid-bins: 600

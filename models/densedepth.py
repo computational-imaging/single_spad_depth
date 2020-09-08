@@ -11,7 +11,7 @@ from .densedepth_backend.utils import scale_up, predict
 
 from core.experiment import ex
 
-@ex.add_arguments
+@ex.add_arguments('DenseDepth')
 def cfg():
     backend = Path(__file__).parent/'densedepth_backend'
     parser = configargparse.get_argument_parser()

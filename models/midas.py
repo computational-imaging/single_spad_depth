@@ -11,16 +11,16 @@ import os
 
 from core.experiment import ex
 
-@ex.add_arguments
+@ex.add_arguments('MiDaS')
 def cfg():
     backend = Path(__file__).parent/'midas_backend'
     parser = configargparse.get_argument_parser()
     group = parser.add_argument_group('MiDaS', 'MiDaS-specific params.')
     group.add('--midas-path', default=str(backend/'model.pt'))
-    group.add('--midas-full-width', type=int, default=480)
-    group.add('--midas-full-height', type=int, default=640)
-    group.add('--midas-min-depth', type=float, default=0.1)
-    group.add('--midas-max-depth', type=float, default=10.)
+    group.add('--full-width', type=int, default=640)
+    group.add('--full-height', type=int, default=480)
+    group.add('--min-depth', type=float, default=0.1)
+    group.add('--max-depth', type=float, default=10.)
     group.add('--gpu', type=str)
     # args, _ = parser.parse_known_args()
     # return vars(args)
@@ -28,10 +28,10 @@ def cfg():
 @ex.setup('MiDaS')
 def setup(config):
     midas = MiDaS(model_path=config['midas_path'],
-                  full_width=config['midas_full_width'],
-                  full_height=config['midas_full_height'],
-                  min_depth=config['midas_min_depth'],
-                  max_depth=config['midas_max_depth'])
+                  full_width=config['full_width'],
+                  full_height=config['full_height'],
+                  min_depth=config['min_depth'],
+                  max_depth=config['max_depth'])
     if config['gpu'] is not None and torch.cuda.is_available():
         os.environ['CUDA_VISIBLE_DEVICES'] = config['gpu']
         midas.model.to('cuda')
@@ -47,13 +47,12 @@ def midas_preprocess(data):
     data['midas_image'] = resize_image(data['image'])
     return data
 
-
 @ex.entity
 class MiDaS:
     def __init__(self, model_path, full_width, full_height, min_depth, max_depth, device='cpu'):
         self.model = MonoDepthNet(model_path)
         self.model.eval()
-        self.full_shape = (full_height, full_width)
+        self.full_shape = (full_width, full_height) # e.g. (640, 480)
         self.depth_range = (min_depth, max_depth)
         self.device = device
 

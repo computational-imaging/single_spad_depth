@@ -13,7 +13,7 @@ from data.nyu_depth_v2.nyuv2_dataset import NYUV2_CROP
 from core.experiment import ex
 
 
-@ex.add_arguments
+@ex.add_arguments('median')
 def cfg():
     parser = configargparse.get_argument_parser()
     group = parser.add_argument_group('MDEMedian', 'MDE+Median method params.')

@@ -1,0 +1,10 @@
+mde: DORN
+img-key: dorn_image
+in-type: torch
+in-order: nchw
+out-type: torch
+out-order: nchw
+
+transform:
+  - dorn_preprocess
+  - to_tensor

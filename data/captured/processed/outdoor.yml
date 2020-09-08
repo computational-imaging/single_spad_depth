@@ -1,0 +1,16 @@
+crop:
+- 0
+- 0
+- 0
+- 0
+full-height: 768
+full-width: 832
+max-depth: 10.907252761240573
+min-depth: 0.3040527612405734
+offset: 0.0
+radial: true
+refl-est: red
+scene: outdoor
+source-alpha: 0.3040527612405734
+source-beta: 10.907252761240573
+source-n-sid-bins: 600

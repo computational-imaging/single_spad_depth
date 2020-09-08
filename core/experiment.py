@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
 import functools
 import logging
+import configargparse
 
 logger = logging.getLogger('experiment')
 logger.setLevel(logging.INFO)
 
 class Experiment:
-    def __init__(self, name, entities=None, config=None, setups=None, transforms=None):
+    def __init__(self, name, entities=None, config=None, setups=None,
+                 add_args=None, transforms=None):
         self.name = name
         self.entities = {} if entities is None else entities
         self.config = {} if config is None else config
         self.transforms = {} if transforms is None else transforms
+        self.add_args = {} if add_args is None else add_args
         self.setups = {} if setups is None else setups
+
+        self.parser = configargparse.get_arg_parser()
 
     def entity(self, _obj=None, *, name=None):
         """Decorator for registering a class or function
@@ -27,9 +32,11 @@ class Experiment:
             self.entities[_obj.__name__] = _obj
             return _obj
 
-    def add_arguments(self, _fn):
-        _fn()
-        return _fn
+    def add_arguments(self, name):
+        def add_args_register(add_args_fn):
+            self.add_args[name] = add_args_fn
+            return add_args_fn
+        return add_args_register
 
     def setup(self, name):
         def setup_register(setup_fn):
@@ -44,6 +51,9 @@ class Experiment:
         return transform_register
 
     def get_and_configure(self, name):
+        self.add_args[name]()
+        config, _ = self.parser.parse_known_args()
+        self.config = vars(config)
         setup_fn = self.setups[name]
         return setup_fn(self.config)
 

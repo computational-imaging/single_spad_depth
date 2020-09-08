@@ -9,8 +9,10 @@ from models.discretize import SI, rescale_hist, Uniform
 from data.nyu_depth_v2.nyuv2_dataset import NYUV2_CROP
 
 from core.experiment import ex
+from models.mde import MDE
+from data.captured.camera_utils import r_to_z, z_to_r
 
-@ex.add_arguments
+@ex.add_arguments('transient')
 def cfg():
     parser = configargparse.get_argument_parser()
     group = parser.add_argument_group('MDETransient', 'MDE+Transient params.')
@@ -21,6 +23,11 @@ def cfg():
     group.add('--n-std', type=int, default=1)
     group.add('--min-depth', type=float, default=0.)
     group.add('--max-depth', type=float, default=10.)
+    group.add('--radial', action='store_true')
+    group.add('--fc', nargs=2, type=float, default=[1053.622, 1047.508])
+    group.add('--image-key', default='image')
+    group.add('--transient-key', default='transient')
+    group.add('--crop', nargs=4, type=int, default=NYUV2_CROP)
     group.add('--source-alpha', type=float, default=0.6569154266167957)
     group.add('--source-beta', type=float, default=9.972175646365525)
     group.add('--source-offset', type=float, default=0.)
@@ -42,17 +49,24 @@ def setup(config):
                      config['source_alpha'],
                      config['source_beta'],
                      config['source_offset'])
+    crop = config['crop'] if not config['crop'] == [0, 0, 0, 0] else None
     return MDETransient(mde_model=mde_model,
                         preproc=preproc,
                         refl_est=refl_est,
                         source_disc=source_disc,
                         min_depth=config['min_depth'],
-                        max_depth=config['max_depth'])
+                        max_depth=config['max_depth'],
+                        crop=crop,
+                        radial=config['radial'],
+                        fc=config['fc'],
+                        image_key=config['image_key'],
+                        transient_key=config['transient_key'])
 
 @ex.entity
 class MDETransient:
     def __init__(self, mde_model, preproc, refl_est, source_disc,
                  min_depth, max_depth, crop=NYUV2_CROP,
+                 radial=False, fc=None,
                  image_key='image', transient_key='transient'):
         self.mde_model = mde_model       # MDE function, torch (channels first) -> torch (single channel)
         self.refl_est = refl_est         # Reflectance estimator, torch -> torch
@@ -61,6 +75,8 @@ class MDETransient:
         self.min_depth = min_depth
         self.max_depth = max_depth
         self.crop = crop
+        self.radial = radial               # True if transient is in r (rather than z) space
+        self.fc = fc                       # Focal Length param of RGB camera - used if radial is true
         self.image_key = image_key         # Key in data for RGB image
         self.transient_key = transient_key # Key in data for transient
 
@@ -72,10 +88,13 @@ class MDETransient:
         reflectance_est = self.refl_est(data[self.image_key]).cpu().numpy().squeeze()
         transient = data[self.transient_key].cpu().numpy().squeeze()
         # Pre-crop
-        depth_init = self.apply_crop(depth_init)
-        reflectance_est = self.apply_crop(reflectance_est)
+        if self.crop is not None:
+            depth_init = self.apply_crop(depth_init)
+            reflectance_est = self.apply_crop(reflectance_est)
 
         # compute weighted depth hist
+        if self.radial:
+            depth_init = z_to_r(depth_init, self.fc)
         source_hist = self.weighted_histogram(depth_init, reflectance_est)
 
         counts_disc = Uniform(len(transient), self.min_depth, self.max_depth)
@@ -84,6 +103,8 @@ class MDETransient:
             self.hist_match(depth_init,
                             source_hist, self.source_disc,
                             target_hist, target_disc)
+        if self.radial:
+            depth_final = r_to_z(depth_final, self.fc)
         depth_final = torch.from_numpy(depth_final)
         return depth_final
 
