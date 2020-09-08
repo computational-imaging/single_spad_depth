@@ -2,15 +2,18 @@
 
 # Disambiguating Monocular Depth Estimation with a Single Transient
 
-1.  [Setup and Installation](#orgbafe38d)
-2.  [Getting and Preprocessing the Data](#org36332f9)
-3.  [Running on NYU Depth v2](#orgd63e114)
-4.  [Running on Scanned Data](#org7b2d832)
-5.  [Diffuse SPAD Example](#org25dee7f)
-6.  [Citation and Contact Info](#org3557095)
+<http://www.computationalimaging.org/publications/single_spad/>
+
+1.  [Setup and Installation](#orgf06a742)
+2.  [Getting and Preprocessing the Data](#org6252436)
+3.  [Running on NYU Depth v2](#orgda7b46c)
+4.  [Running on Scanned Data](#org34e6a00)
+5.  [Diffuse SPAD Example](#org7c2da03)
+6.  [Two Planes Example](#orgbfffee3)
+7.  [Citation and Contact Info](#org1a38d63)
 
 
-<a id="orgbafe38d"></a>
+<a id="orgf06a742"></a>
 
 ## Setup and Installation
 
@@ -28,7 +31,7 @@ the command
     conda activate single-spad-depth
 
 
-<a id="org36332f9"></a>
+<a id="org6252436"></a>
 
 ## Getting and Preprocessing the Data
 
@@ -53,22 +56,23 @@ To simulate the SPAD on the test set run the command
 
 ### Captured Data
 
-Data for the scanned scenes can be downloaded here:
+1.  Scanned
 
--   kitchen
--   conference room (classroom)
--   lab
--   poster
--   desk
--   hallway
--   outdoor
+    Data for the scanned scenes [can be downloaded here.](https://drive.google.com/uc?export=download&id=1uckREyTwRShJBOVr0HWgbmu4oqPpNmxH)
+    After downloading and extracting the file to the `data/captured/raw` directory, run
+    
+        python preprocess_scans.py
+    
+    to generate `.npy` and `.yml` files with the data and configs necessary to run
+    the model, respectively.
 
-After downloading the files, run
+2.  Scanned + Diffuse
 
-    python preprocess_scans.py
+    [Data available here,](https://drive.google.com/uc?export=download&id=1brsjTX_kFIEn2Pmj8CrEmc4OU2GewrIA) download and extract to the `data/captured/raw` directory.
 
-to generate `.npy` and `.yml` files with the data and configs necessary to run
-the model, respectively.
+3.  Two Planes Image
+
+    [Data available here,](https://drive.google.com/uc?export=download&id=1oAl2q_SuzwaG2aMj9OaUcW8ECC09Kww6) download and extract to the `data/captured/raw` directory.
 
 
 ### Model Weights
@@ -82,7 +86,7 @@ DORN, DenseDepth, and MiDaS weights can be downloaded at the following links:
 Each should be placed in the relevant `*_backend` folder in the `models` directory.
 
 
-<a id="orgd63e114"></a>
+<a id="orgda7b46c"></a>
 
 ## Running on NYU Depth v2
 
@@ -125,7 +129,7 @@ Results are automatically saved to
 estimates on the official NYUv2 center crop of each image.
 
 
-<a id="org7b2d832"></a>
+<a id="org34e6a00"></a>
 
 ## Running on Scanned Data
 
@@ -155,7 +159,7 @@ Results are saved in the `results_captured` folder. A jupyter notebook is
 provided for inspecting the results.
 
 
-<a id="org25dee7f"></a>
+<a id="org7c2da03"></a>
 
 ## Diffuse SPAD Example
 
@@ -165,7 +169,15 @@ isolate particular parts, such as the MDEs, the transient preprocessing, or the
 histogram matching.
 
 
-<a id="org3557095"></a>
+<a id="orgbfffee3"></a>
+
+## Two Planes Example
+
+A jupyter notebook is provided for comparing the transients produced by the
+scanned and diffuse methods on the two planes image.
+
+
+<a id="org1a38d63"></a>
 
 ## Citation and Contact Info
 
@@ -185,5 +197,5 @@ M. Nishimura, D. B. Lindell, C. Metzler, G. Wetzstein, “Disambiguating Monocul
 
 ### Contact info
 
-Mark Nishimura: markn1 at stanford dot edu
+For more questions please email Mark Nishimura: markn1 at stanford dot edu
 

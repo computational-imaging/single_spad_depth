@@ -2,6 +2,7 @@
 #+OPTIONS: toc:nil
 
 * Disambiguating Monocular Depth Estimation with a Single Transient
+http://www.computationalimaging.org/publications/single_spad/
 #+TOC: headlines 1 local
 ** Setup and Installation
 *** Anaconda
@@ -33,20 +34,18 @@ To simulate the SPAD on the test set run the command
 python simulate_single_spad.py test
 #+END_SRC
 *** Captured Data
-Data for the scanned scenes can be downloaded here:
-- kitchen
-- conference room (classroom)
-- lab
-- poster
-- desk
-- hallway
-- outdoor
-After downloading the files, run
+**** Scanned
+Data for the scanned scenes [[https://drive.google.com/uc?export=download&id=1uckREyTwRShJBOVr0HWgbmu4oqPpNmxH][can be downloaded here.]]
+After downloading and extracting the file to the =data/captured/raw= directory, run
 #+BEGIN_SRC sh
 python preprocess_scans.py
 #+END_SRC
 to generate =.npy= and =.yml= files with the data and configs necessary to run
 the model, respectively.
+**** Scanned + Diffuse
+[[https://drive.google.com/uc?export=download&id=1brsjTX_kFIEn2Pmj8CrEmc4OU2GewrIA][Data available here,]] download and extract to the =data/captured/raw= directory.
+**** Two Planes Image
+[[https://drive.google.com/uc?export=download&id=1oAl2q_SuzwaG2aMj9OaUcW8ECC09Kww6][Data available here,]] download and extract to the =data/captured/raw= directory.
 *** Model Weights
 DORN, DenseDepth, and MiDaS weights can be downloaded at the following links:
 - [[https://drive.google.com/uc?export=download&id=1WPD2mf2wSvPwisaeeEDvzyxkAekj_rxR][DORN]]
@@ -107,6 +106,9 @@ A jupyter notebook is provided for running the method on the diffuse spad scene.
 It also provides a good reference for how to use the API if one wishes to
 isolate particular parts, such as the MDEs, the transient preprocessing, or the
 histogram matching.
+** Two Planes Example
+A jupyter notebook is provided for comparing the transients produced by the
+scanned and diffuse methods on the two planes image.
 ** Citation and Contact Info
 M. Nishimura, D. B. Lindell, C. Metzler, G. Wetzstein, “Disambiguating Monocular Depth Estimation with a Single Transient”, European Conference on Computer Vision (ECCV), 2020.
 *** BibTeX
