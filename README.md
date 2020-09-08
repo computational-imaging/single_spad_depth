@@ -2,13 +2,15 @@
 
 # Disambiguating Monocular Depth Estimation with a Single Transient
 
-1.  [Setup and Installation](#orgb153ad8)
-2.  [Getting and Preprocessing the Data](#orga3ff254)
-3.  [Running on NYU Depth v2](#org9a31e9c)
-4.  [Running on Captured Data](#orgcab9406)
+1.  [Setup and Installation](#orgbafe38d)
+2.  [Getting and Preprocessing the Data](#org36332f9)
+3.  [Running on NYU Depth v2](#orgd63e114)
+4.  [Running on Scanned Data](#org7b2d832)
+5.  [Diffuse SPAD Example](#org25dee7f)
+6.  [Citation and Contact Info](#org3557095)
 
 
-<a id="orgb153ad8"></a>
+<a id="orgbafe38d"></a>
 
 ## Setup and Installation
 
@@ -20,13 +22,13 @@ command.
 
     conda env create -f environment.yml
 
-This will create an environment called `spad-single` which can be activated via
+This will create an environment called `single-spad-depth` which can be activated via
 the command
 
     conda activate single-spad-depth
 
 
-<a id="orga3ff254"></a>
+<a id="org36332f9"></a>
 
 ## Getting and Preprocessing the Data
 
@@ -51,7 +53,22 @@ To simulate the SPAD on the test set run the command
 
 ### Captured Data
 
-TODO
+Data for the scanned scenes can be downloaded here:
+
+-   kitchen
+-   conference room (classroom)
+-   lab
+-   poster
+-   desk
+-   hallway
+-   outdoor
+
+After downloading the files, run
+
+    python preprocess_scans.py
+
+to generate `.npy` and `.yml` files with the data and configs necessary to run
+the model, respectively.
 
 
 ### Model Weights
@@ -65,7 +82,7 @@ DORN, DenseDepth, and MiDaS weights can be downloaded at the following links:
 Each should be placed in the relevant `*_backend` folder in the `models` directory.
 
 
-<a id="org9a31e9c"></a>
+<a id="orgd63e114"></a>
 
 ## Running on NYU Depth v2
 
@@ -76,7 +93,7 @@ The basic pattern is to run the command
       [--sbr SBR]
       [--gpu GPU]
 
-MDE can be DORN, DenseDepth, or MiDaS.
+MDE can be `dorn`, `densedepth`, or `midas`.
 method.yml can take on the following values:
 
 -   `mde.yml` to run the MDE alone (default) - DORN and DenseDepth only.
@@ -87,6 +104,10 @@ method.yml can take on the following values:
 
 For running on GPU, use the `--gpu` argument with number indicating which one to
 use.
+
+
+### Shell scripts
+
 Also provided are three shell scripts, `run_all_<method>.sh` which will run all
 the MDEs on the given method.
 
@@ -104,9 +125,65 @@ Results are automatically saved to
 estimates on the official NYUv2 center crop of each image.
 
 
-<a id="orgcab9406"></a>
+<a id="org7b2d832"></a>
 
-## Running on Captured Data
+## Running on Scanned Data
 
-TODO
+The basic pattern is to run the command:
+
+    python eval_captured.py \
+        --mde-config configs/captured/<mde>.yml \
+        --scene-config data/captured/processed/<scene>.yml\
+        --method METHOD \
+        [--gpu GPU]
+
+`mde` can be `dorn`, `densedepth`, or `midas`.
+`scene` is one of the above scenes.
+`METHOD` is either `mde` or `transient`.
+`GPU` is the number of the gpu to run on.
+
+
+### Shell scripts
+
+Also provided are shell scripts of the form `run_<scene>.sh` which can be run to
+run all of the MDEs on that scene. `--method` still must be specified.
+
+
+### Results
+
+Results are saved in the `results_captured` folder. A jupyter notebook is
+provided for inspecting the results.
+
+
+<a id="org25dee7f"></a>
+
+## Diffuse SPAD Example
+
+A jupyter notebook is provided for running the method on the diffuse spad scene.
+It also provides a good reference for how to use the API if one wishes to
+isolate particular parts, such as the MDEs, the transient preprocessing, or the
+histogram matching.
+
+
+<a id="org3557095"></a>
+
+## Citation and Contact Info
+
+M. Nishimura, D. B. Lindell, C. Metzler, G. Wetzstein, “Disambiguating Monocular Depth Estimation with a Single Transient”, European Conference on Computer Vision (ECCV), 2020.
+
+
+### BibTeX
+
+    @article{Nishimura:2020,
+    author={M. Nishimura and D. B. Lindell and C. Metzler and G. Wetzstein},
+    journal={European Conference on Computer Vision (ECCV)},
+    title={{Disambiguating Monocular Depth Estimation
+    with a Single Transient}},
+    year={2020},
+    }
+
+
+### Contact info
+
+Mark Nishimura: markn1 at stanford dot edu
 

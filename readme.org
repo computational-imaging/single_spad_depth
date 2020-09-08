@@ -33,7 +33,20 @@ To simulate the SPAD on the test set run the command
 python simulate_single_spad.py test
 #+END_SRC
 *** Captured Data
-TODO
+Data for the scanned scenes can be downloaded here:
+- kitchen
+- conference room (classroom)
+- lab
+- poster
+- desk
+- hallway
+- outdoor
+After downloading the files, run
+#+BEGIN_SRC sh
+python preprocess_scans.py
+#+END_SRC
+to generate =.npy= and =.yml= files with the data and configs necessary to run
+the model, respectively.
 *** Model Weights
 DORN, DenseDepth, and MiDaS weights can be downloaded at the following links:
 - [[https://drive.google.com/uc?export=download&id=1WPD2mf2wSvPwisaeeEDvzyxkAekj_rxR][DORN]]
@@ -70,5 +83,41 @@ d = np.load('summary.npy', allow_pickle=True)[()]
 #+END_SRC
 =preds_cropped.npy= contains an N by 440 by 592 numpy array containing the final depth
 estimates on the official NYUv2 center crop of each image.
-** Running on Captured Data
-TODO
+** Running on Scanned Data
+The basic pattern is to run the command:
+#+BEGIN_SRC sh
+python eval_captured.py \
+    --mde-config configs/captured/<mde>.yml \
+    --scene-config data/captured/processed/<scene>.yml\
+    --method METHOD \
+    [--gpu GPU]
+#+END_SRC
+=mde= can be =dorn=, =densedepth=, or =midas=.
+=scene= is one of the above scenes.
+=METHOD= is either =mde= or =transient=.
+=GPU= is the number of the gpu to run on.
+*** Shell scripts
+Also provided are shell scripts of the form =run_<scene>.sh= which can be run to
+run all of the MDEs on that scene. =--method= still must be specified.
+*** Results
+Results are saved in the =results_captured= folder. A jupyter notebook is
+provided for inspecting the results.
+** Diffuse SPAD Example
+A jupyter notebook is provided for running the method on the diffuse spad scene.
+It also provides a good reference for how to use the API if one wishes to
+isolate particular parts, such as the MDEs, the transient preprocessing, or the
+histogram matching.
+** Citation and Contact Info
+M. Nishimura, D. B. Lindell, C. Metzler, G. Wetzstein, “Disambiguating Monocular Depth Estimation with a Single Transient”, European Conference on Computer Vision (ECCV), 2020.
+*** BibTeX
+#+BEGIN_EXAMPLE
+@article{Nishimura:2020,
+author={M. Nishimura and D. B. Lindell and C. Metzler and G. Wetzstein},
+journal={European Conference on Computer Vision (ECCV)},
+title={{Disambiguating Monocular Depth Estimation
+with a Single Transient}},
+year={2020},
+}
+#+END_EXAMPLE
+*** Contact info
+For more questions please email Mark Nishimura: markn1 at stanford dot edu

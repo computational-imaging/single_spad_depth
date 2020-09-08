@@ -233,3 +233,14 @@ def refl_est_red(nchw_tensor):
     nhwc = nchw_tensor.permute(0, 2, 3, 1)
     refl_est = nhwc[..., 0]
     return refl_est
+
+@ex.entity
+def refl_est_green(nchw_tensor):
+    """
+    tensor should be a NCHW torch tensor in RGB channel order and in range [0, 1]
+    returns a nhw reflectance map torch tensor
+    """
+    assert len(nchw_tensor.shape) == 4
+    nhwc = nchw_tensor.permute(0, 2, 3, 1)
+    refl_est = nhwc[..., 1]
+    return refl_est

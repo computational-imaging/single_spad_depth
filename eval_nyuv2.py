@@ -33,7 +33,7 @@ def cfg():
     group.add('-c', is_config_file=True)
     group.add('--method', choices=['mde', 'median', 'gt_hist', 'transient'],
                default='mde', help="Method to evaluate.")
-    group.add('--sbr', type=float, help='sbr for transient method')
+    group.add('--sbr', type=float, default=5., help='sbr for transient method')
     group.add('--split', choices=['train', 'test'], default='test')
     group.add('--transform', action='append')
     group.add('--pre-cropped', action='store_true',
